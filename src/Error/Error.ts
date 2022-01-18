@@ -14,6 +14,51 @@ export class NetworkError extends Error {
   }
 }
 
+export class HttpDataExtractionError extends Error {
+  public _tag: "HttpDataExtractionError";
+  public _error: unknown;
+
+  private constructor(message: string, error: unknown) {
+    super(`HttpDataExtractionError: ${message}`);
+    this._tag = "HttpDataExtractionError";
+    this._error = error;
+  }
+
+  public static of(message: string, e: unknown): HttpDataExtractionError {
+    return new HttpDataExtractionError(message, e);
+  }
+}
+
+export class HttpRequestError extends Error {
+  public _tag: "HttpRequestError";
+  public _error: unknown;
+
+  private constructor(message: string, error: unknown) {
+    super(`HttpRequestError: ${message}`);
+    this._tag = "HttpRequestError";
+    this._error = error;
+  }
+
+  public static of(message: string, e: unknown): HttpRequestError {
+    return new HttpRequestError(message, e);
+  }
+}
+
+export class HttpResponseStatusError extends Error {
+  public _tag: "HttpResponseStatusError";
+  public _status: number;
+
+  private constructor(message: string, status: number) {
+    super(`Network Error: ${message}`);
+    this._tag = "HttpResponseStatusError";
+    this._status = status;
+  }
+
+  public static of(message: string, status: number): HttpResponseStatusError {
+    return new HttpResponseStatusError(message, status);
+  }
+}
+
 export class ParseError extends Error {
   public _tag: "ParseError";
 
@@ -40,7 +85,14 @@ export class BadRequestError extends Error {
   }
 }
 
-export type NewError = BadRequestError | ParseError | NetworkError;
+export type NewError =
+  | BadRequestError
+  | ParseError
+  | NetworkError
+  | HttpRequestError
+  | HttpDataExtractionError
+  | HttpResponseStatusError;
+
 export const enum ErrorType {
   BadRequestError = "BadRequestError",
   ParseError = "ParseError",

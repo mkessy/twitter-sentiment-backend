@@ -1,10 +1,17 @@
-import { axiosGetTask } from "./utils/axiosUtils";
+import {
+  axiosFetch,
+  axiosFetchAndDecode,
+  axiosHttpClientEnv,
+} from "./utils/axiosUtils";
 import { pipe } from "fp-ts/lib/function";
 import * as E from "fp-ts/Either";
 import * as dotenv from "dotenv";
 import { AxiosRequestConfig } from "axios";
-import * as util from "util";
-import { string } from "fp-ts";
+import {
+  AxiosHttpClient,
+  AxiosHttpClientEnv,
+  AxiosRequestConfigRequired,
+} from "./types";
 
 dotenv.config();
 type Stream = NodeJS.ReadableStream;
@@ -17,34 +24,20 @@ type Tweet = {
 
 const streamEndpoint =
   "https://api.twitter.com/2/tweets/search/stream?tweet.fields=context_annotations";
-const axiosConfig: AxiosRequestConfig = {
+
+const rulesEndpoint = "https://api.twitter.com/2/tweets/search/stream/rules";
+
+// with AxiosRequestConfigRequired I can make allowable calls sum types of this
+// config and only use the AxiosHttpClient through those types
+const axiosConfig: AxiosRequestConfigRequired = {
+  method: "get",
   headers: {
     Authorization: `Bearer ${process.env.BEARER_TOKEN}`,
   },
-  responseType: "stream",
+  timeout: 10000,
+  responseType: "json",
 };
 
-console.log(process.env.BEARER_TOKEN);
+const run = axiosFetch(rulesEndpoint, axiosConfig);
 
-const run = axiosGetTask<Stream>(streamEndpoint, axiosConfig);
-
-run().then((data) => {
-  pipe(
-    data,
-    E.fold(
-      (error) => console.log(error),
-      (tweetStream) => {
-        tweetStream.on("data", (tweet) => {
-          try {
-            const json = JSON.parse(tweet);
-            console.log("##########################################");
-            console.log(json.data.text);
-            console.log(util.inspect(json.data.context_annotations));
-          } catch (e) {
-            console.log("heartbeat");
-          }
-        });
-      }
-    )
-  );
-});
+run(axiosHttpClientEnv)().then((result) => console.log(result));
