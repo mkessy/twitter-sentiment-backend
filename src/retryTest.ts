@@ -17,7 +17,7 @@ import {
 } from "retry-ts";
 import { retrying } from "retry-ts/Task";
 import { NewError } from "./Error/Error";
-import { AxiosRequestConfigRequired } from "./types";
+import { AxiosRequiredConfig } from "./types";
 import {
   axiosFetch,
   axiosHttpClientEnv,
@@ -30,7 +30,7 @@ const env = dotenv.config();
 
 console.log(env.parsed);
 
-const axiosConfig: AxiosRequestConfigRequired = {
+const axiosConfig: AxiosRequiredConfig = {
   method: "get",
   headers: {
     Authorization: `Bearer ${process.env.BEARER_TOKEN}`,
@@ -60,4 +60,4 @@ const result = retrying<E.Either<NewError, unknown>>(
     return api;
   },
   E.isLeft
-)().then((val) => console.log(val));
+);

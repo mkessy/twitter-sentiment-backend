@@ -15,14 +15,13 @@ import * as RTE from "fp-ts/ReaderTaskEither";
 import {
   AxiosHttpClient,
   AxiosHttpClientEnv,
-  AxiosRequestConfigRequired,
+  AxiosRequiredConfig,
 } from "../types";
 
 import { StatusCodes, getReasonPhrase } from "http-status-codes";
-import { ReadonlyNonEmptyArray } from "fp-ts/lib/ReadonlyNonEmptyArray";
 
 const axiosHttpClient: AxiosHttpClient = {
-  request: (url: string, config: AxiosRequestConfigRequired) =>
+  request: (url: string, config: AxiosRequiredConfig) =>
     TE.tryCatch(
       () => {
         return axios({
@@ -42,20 +41,23 @@ export const axiosHttpClientEnv: AxiosHttpClientEnv = {
 
 export const axiosRequest = (
   url: string,
-  config: AxiosRequestConfigRequired
+  config: AxiosRequiredConfig
 ): RTE.ReaderTaskEither<AxiosHttpClientEnv, NewError, AxiosResponse> =>
   pipe(
     RTE.asks<AxiosHttpClientEnv, AxiosHttpClient>(
       (env: AxiosHttpClientEnv) => env.axiosHttpClient
     ),
     RTE.chainTaskEitherKW((axiosHttpClient: AxiosHttpClient) =>
-      axiosHttpClient.request(url, { ...config, validateStatus: (_) => true })
+      axiosHttpClient.request(url, {
+        ...config,
+        validateStatus: (_: number) => true,
+      })
     )
   );
 
 export const axiosFetch = <T>(
   url: string,
-  config: AxiosRequestConfigRequired
+  config: AxiosRequiredConfig
 ): RTE.ReaderTaskEither<AxiosHttpClientEnv, NewError, T> =>
   pipe(axiosRequest(url, config), RTE.chainTaskEitherK(getData));
 
@@ -86,7 +88,7 @@ export const validateStatus =
 
 export const axiosFetchAndDecode = <T>(
   url: string,
-  config: AxiosRequestConfigRequired,
+  config: AxiosRequiredConfig,
   decoder: D.Decoder<unknown, T>
 ): RTE.ReaderTaskEither<AxiosHttpClientEnv, NewError | D.DecodeError, T> =>
   pipe(
@@ -98,7 +100,7 @@ export const axiosFetchAndDecode = <T>(
 const axiosPost = async <T, D>(
   url: string,
   data: D,
-  config?: AxiosRequestConfigRequired
+  config?: AxiosRequiredConfig
 ) => {
   console.log(`posting ${url}`);
   return axios
@@ -109,29 +111,3 @@ const axiosPost = async <T, D>(
       return res.data;
     });
 };
-
-// wrap the promise returned by axios in a TaskEither monad
-/* export const axiosGetTask = TE.tryCatchK(axiosGet, (reason) =>
-  NetworkError.of(String(reason))
-);
-
-export const axiosPostTask = TE.tryCatchK(axiosPost, (reason) =>
-  NetworkError.of(String(reason))
-); */
-
-// "safe" fetching with runtime validation provided by the decoder
-/* export const safeFetchAndDecode = <T>(
-  url: string,
-  decoder: D.Decoder<unknown, T>
-): TE.TaskEither<NewError, T> =>
-  pipe(
-    axiosGetTask<T>(url),
-    TE.chainW((a) => {
-      //chainW allows us to capture both types of possible errors
-      const decoded = decoder.decode(a);
-      return E.isLeft(decoded)
-        ? TE.left(ParseError.of(String(decoded.left)))
-        : TE.right(decoded.right);
-    })
-  );
- */

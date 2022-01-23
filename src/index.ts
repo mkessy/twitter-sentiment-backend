@@ -1,19 +1,34 @@
-import {
-  axiosFetch,
-  axiosFetchAndDecode,
-  axiosHttpClientEnv,
-} from "./utils/axiosUtils";
+import { axiosFetch, axiosHttpClientEnv } from "./utils/axiosUtils";
 import { pipe } from "fp-ts/lib/function";
+import * as TE from "fp-ts/TaskEither";
+import * as T from "fp-ts/Task";
 import * as E from "fp-ts/Either";
+import * as IO from "fp-ts/IO";
+import { pipeline } from "stream";
+
 import * as dotenv from "dotenv";
-import { AxiosRequestConfig } from "axios";
+import { AxiosRequiredConfig } from "./types";
+import { connectToTweetStream } from "./stream/twitterStreamAPI";
 import {
-  AxiosHttpClient,
-  AxiosHttpClientEnv,
-  AxiosRequestConfigRequired,
-} from "./types";
+  parseToJson,
+  decodeTransformStream,
+  logStream,
+} from "./stream/tweetStreamTransforms";
+import { NewError } from "./Error/Error";
+
+import {
+  capDelay,
+  exponentialBackoff,
+  constantDelay,
+  limitRetries,
+  Monoid,
+  RetryStatus,
+} from "retry-ts";
+import { retrying } from "retry-ts/Task";
 
 dotenv.config();
+
+console.log(process.env.BEARER_TOKEN);
 type Stream = NodeJS.ReadableStream;
 type Tweet = {
   data: {
@@ -22,22 +37,63 @@ type Tweet = {
   };
 };
 
-const streamEndpoint =
-  "https://api.twitter.com/2/tweets/search/stream?tweet.fields=context_annotations";
+const policy = capDelay(
+  2000,
+  Monoid.concat(constantDelay(1), limitRetries(100))
+);
 
-const rulesEndpoint = "https://api.twitter.com/2/tweets/search/stream/rules";
-
-// with AxiosRequestConfigRequired I can make allowable calls sum types of this
-// config and only use the AxiosHttpClient through those types
-const axiosConfig: AxiosRequestConfigRequired = {
-  method: "get",
-  headers: {
-    Authorization: `Bearer ${process.env.BEARER_TOKEN}`,
+const result = retrying(
+  policy,
+  (status) => () => {
+    console.log(status);
+    return executeRunTweetStream();
   },
-  timeout: 10000,
-  responseType: "json",
-};
+  E.isLeft
+);
 
-const run = axiosFetch(rulesEndpoint, axiosConfig);
+const executeRunTweetStream = pipe(
+  connectToTweetStream(axiosHttpClientEnv),
+  TE.map((tweetStream) =>
+    IO.of(
+      pipeline(tweetStream, parseToJson, process.stdout, (err) =>
+        console.error("stream closed")
+      )
+    )
+  )
+);
 
-run(axiosHttpClientEnv)().then((result) => console.log(result));
+executeRunTweetStream().then((value) => {
+  console.log(value);
+  if (E.isLeft(value)) {
+    result().then((val) => console.log("failed after retrying?", val));
+  } else {
+    console.log(
+      "succeeded",
+      pipe(
+        value,
+        E.map((stream) => stream())
+      )
+    );
+  }
+});
+
+/* const runTweetStream = pipe(
+  executeRunTweetStream,
+  TE.matchEW(
+    (e) => result,
+    (stream) => {
+      console.log("stream sucess");
+      return T.of(stream);
+    }
+  )
+)().then((val) => console.log("stream success")); */
+
+/* runTweetStream().then((stream) =>
+  pipe(
+    stream,
+    E.fold(
+      (e: NewError) => console.log(e),
+      (transformedStream) => transformedStream()
+    )
+  )
+); */
