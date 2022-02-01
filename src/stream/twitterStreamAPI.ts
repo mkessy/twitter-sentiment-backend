@@ -9,11 +9,15 @@ import {
   AxiosRequiredConfig,
   GetRulesResponse,
   AddRule,
+  AddRulesResponse,
+  DeleteRule,
+  DeleteRulesResponse,
 } from "../types";
 import {
   DeleteRulesDecoder,
   GetRulesResponseDecoder,
-  PostAddRulesResponseDecoder,
+  AddRulesResponseDecoder,
+  DeleteRulesResponseDecoder,
 } from "../decoders";
 import { ReadableStream } from "node:stream/web";
 import * as dotenv from "dotenv";
@@ -22,6 +26,7 @@ import { NewError } from "../Error/Error";
 import { pipe } from "fp-ts/lib/function";
 import {
   axiosFetchAndDecode,
+  axiosHttpClientEnv,
   axiosRequest,
   getData,
   validateStatus,
@@ -32,11 +37,6 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 interface APIConfig {
   endpoint: string;
-  axiosConfig: AxiosRequiredConfig;
-}
-
-interface TweetStreamConfig {
-  streamEndpoint: string;
   axiosConfig: AxiosRequiredConfig;
 }
 
@@ -53,7 +53,7 @@ const tweetStreamConfig: APIConfig = {
   },
 };
 
-export const connectToTweetStream: RTE.ReaderTaskEither<
+const connectToTweetStream: RTE.ReaderTaskEither<
   AxiosHttpClientEnv,
   NewError,
   NodeJS.ReadStream
@@ -76,19 +76,19 @@ const getRulesConfig: APIConfig = {
   },
 };
 
-export const getTweetStreamRules: RTE.ReaderTaskEither<
+const getTweetStreamRules: RTE.ReaderTaskEither<
   AxiosHttpClientEnv,
   NewError | DecodeError,
   GetRulesResponse
-> = pipe(getRulesConfig, ({ endpoint, axiosConfig }) =>
-  axiosFetchAndDecode<GetRulesResponse>(
-    endpoint,
-    axiosConfig,
-    GetRulesResponseDecoder
-  )
+> = pipe(
+  getRulesConfig,
+  ({ endpoint, axiosConfig }) => axiosRequest(endpoint, axiosConfig),
+  RTE.chainEitherKW(validateStatus([200])),
+  RTE.chainTaskEitherKW(getData),
+  RTE.chainEitherKW(GetRulesResponseDecoder.decode)
 );
 
-const postRulesConfig: APIConfig = {
+const addRulesConfig: APIConfig = {
   endpoint: "https://api.twitter.com/2/tweets/search/stream/rules",
   axiosConfig: {
     headers: {
@@ -96,13 +96,61 @@ const postRulesConfig: APIConfig = {
     },
     method: "post",
     responseType: "json",
-    timeout: 5000, // need timeout higher than 20 secs for heartbeat
+    timeout: 5000,
   },
 };
 
-export const postTweetStreamRules = (rules: AddRule) =>
-  axiosFetchAndDecode(
-    postRulesConfig.endpoint,
-    { ...postRulesConfig.axiosConfig, data: rules },
-    PostAddRulesResponseDecoder
+const addTweetStreamRules: (
+  rules: AddRule
+) => RTE.ReaderTaskEither<
+  AxiosHttpClientEnv,
+  NewError | DecodeError,
+  AddRulesResponse
+> = (rules) =>
+  pipe(
+    addRulesConfig,
+    ({ endpoint, axiosConfig }) =>
+      axiosRequest(endpoint, { ...axiosConfig, data: rules }),
+    RTE.chainEitherKW(validateStatus([201])),
+    RTE.chainTaskEitherK(getData),
+    RTE.chainEitherKW(AddRulesResponseDecoder.decode)
   );
+
+const deleteRulesConfig: APIConfig = {
+  endpoint: "https://api.twitter.com/2/tweets/search/stream/rules",
+  axiosConfig: {
+    headers: {
+      Authorization: `Bearer ${process.env.BEARER_TOKEN}`,
+    },
+    method: "post",
+    responseType: "json",
+    timeout: 5000,
+  },
+};
+
+const deleteTweetStreamRules: (
+  rules: DeleteRule
+) => RTE.ReaderTaskEither<
+  AxiosHttpClientEnv,
+  NewError | DecodeError,
+  DeleteRulesResponse
+> = (rules) =>
+  pipe(
+    deleteRulesConfig,
+    ({ endpoint, axiosConfig }) =>
+      axiosRequest(endpoint, { ...axiosConfig, data: rules }),
+    RTE.chainEitherKW(validateStatus([201])),
+    RTE.chainTaskEitherK(getData),
+    RTE.chainEitherKW(DeleteRulesResponseDecoder.decode)
+  );
+
+export const twitterAPIService = pipe(
+  RTE.ask<AxiosHttpClientEnv>(),
+  RTE.map((env) => ({
+    connectToTweetStream: connectToTweetStream(env),
+    getTweetStreamRules: getTweetStreamRules(env),
+    addTweetStreamRules: (rules: AddRule) => addTweetStreamRules(rules)(env),
+    deleteTweetStreamRules: (rules: DeleteRule) =>
+      deleteTweetStreamRules(rules)(env),
+  }))
+);

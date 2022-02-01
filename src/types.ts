@@ -3,7 +3,8 @@ import {
   AddRulesDecoder,
   DeleteRulesDecoder,
   GetRulesResponseDecoder,
-  PostAddRulesResponseDecoder,
+  AddRulesResponseDecoder,
+  DeleteRulesResponseDecoder,
 } from "./decoders";
 import * as D from "io-ts/Decoder";
 import * as TE from "fp-ts/TaskEither";
@@ -33,4 +34,5 @@ export interface AxiosHttpClientEnv {
 export type AddRule = D.TypeOf<typeof AddRulesDecoder>;
 export type DeleteRule = D.TypeOf<typeof DeleteRulesDecoder>;
 export type GetRulesResponse = D.TypeOf<typeof GetRulesResponseDecoder>;
-export type AddRulesResponse = D.TypeOf<typeof PostAddRulesResponseDecoder>;
+export type AddRulesResponse = D.TypeOf<typeof AddRulesResponseDecoder>;
+export type DeleteRulesResponse = D.TypeOf<typeof DeleteRulesResponseDecoder>;

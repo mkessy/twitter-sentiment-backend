@@ -48,7 +48,7 @@ export const GetRulesResponseDecoder = pipe(
   D.intersect(ErrorDecoder)
 );
 
-export const PostAddRulesResponseDecoder = pipe(
+export const AddRulesResponseDecoder = pipe(
   D.partial({
     data: D.array(
       D.struct({
@@ -64,6 +64,19 @@ export const PostAddRulesResponseDecoder = pipe(
         not_created: D.number,
         valid: D.number,
         not_valid: D.number,
+      }),
+    }),
+  }),
+  D.intersect(ErrorDecoder)
+);
+
+export const DeleteRulesResponseDecoder = pipe(
+  D.partial({
+    meta: D.struct({
+      sent: D.string,
+      summary: D.partial({
+        deleted: D.number,
+        not_deleted: D.number,
       }),
     }),
   }),
