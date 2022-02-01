@@ -144,13 +144,10 @@ const deleteTweetStreamRules: (
     RTE.chainEitherKW(DeleteRulesResponseDecoder.decode)
   );
 
-export const twitterAPIService = pipe(
-  RTE.ask<AxiosHttpClientEnv>(),
-  RTE.map((env) => ({
-    connectToTweetStream: connectToTweetStream(env),
-    getTweetStreamRules: getTweetStreamRules(env),
-    addTweetStreamRules: (rules: AddRule) => addTweetStreamRules(rules)(env),
-    deleteTweetStreamRules: (rules: DeleteRule) =>
-      deleteTweetStreamRules(rules)(env),
-  }))
-);
+export const twitterAPIService = (env: AxiosHttpClientEnv) => ({
+  connectToTweetStream: connectToTweetStream(env),
+  getTweetStreamRules: getTweetStreamRules(env),
+  addTweetStreamRules: (rules: AddRule) => addTweetStreamRules(rules)(env),
+  deleteTweetStreamRules: (rules: DeleteRule) =>
+    deleteTweetStreamRules(rules)(env),
+});

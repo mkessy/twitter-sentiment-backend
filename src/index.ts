@@ -1,4 +1,4 @@
-import { axiosFetch, axiosHttpClientEnv } from "./utils/axiosUtils";
+import { axiosHttpClientEnv } from "./utils/axiosUtils";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/TaskEither";
 import * as T from "fp-ts/Task";
@@ -8,35 +8,16 @@ import { pipeline } from "stream";
 
 import "dotenv/config";
 
-import { AxiosRequiredConfig } from "./types";
-import { connectToTweetStream } from "./stream/twitterStreamAPI";
-import {
-  parseToJson,
-  decodeTransformStream,
-  logStream,
-  objectModeStream,
-  stringifyStream,
-} from "./stream/tweetStreamTransforms";
+import { twitterAPIService } from "./stream/twitterStreamAPI";
+import { parseToJson, stringifyStream } from "./stream/tweetStreamTransforms";
 import { NewError } from "./Error/Error";
 
-import {
-  capDelay,
-  exponentialBackoff,
-  constantDelay,
-  limitRetries,
-  Monoid,
-  RetryStatus,
-} from "retry-ts";
+import { capDelay, constantDelay, limitRetries, Monoid } from "retry-ts";
 import { retrying } from "retry-ts/Task";
 
 console.log(process.env.BEARER_TOKEN);
-type Stream = NodeJS.ReadableStream;
-type Tweet = {
-  data: {
-    id: string;
-    text: string;
-  };
-};
+
+const streamAPI = twitterAPIService(axiosHttpClientEnv);
 
 const policy = capDelay(
   2000,
@@ -53,7 +34,7 @@ const result = retrying(
 );
 
 const getTweetStream = pipe(
-  connectToTweetStream(axiosHttpClientEnv),
+  streamAPI.connectToTweetStream,
   TE.map((tweetStream) =>
     IO.of(
       pipeline(
