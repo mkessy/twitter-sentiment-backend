@@ -6,13 +6,16 @@ import * as E from "fp-ts/Either";
 import * as IO from "fp-ts/IO";
 import { pipeline } from "stream";
 
-import * as dotenv from "dotenv";
+import "dotenv/config";
+
 import { AxiosRequiredConfig } from "./types";
 import { connectToTweetStream } from "./stream/twitterStreamAPI";
 import {
   parseToJson,
   decodeTransformStream,
   logStream,
+  objectModeStream,
+  stringifyStream,
 } from "./stream/tweetStreamTransforms";
 import { NewError } from "./Error/Error";
 
@@ -26,8 +29,6 @@ import {
 } from "retry-ts";
 import { retrying } from "retry-ts/Task";
 
-dotenv.config();
-
 console.log(process.env.BEARER_TOKEN);
 type Stream = NodeJS.ReadableStream;
 type Tweet = {
@@ -39,61 +40,63 @@ type Tweet = {
 
 const policy = capDelay(
   2000,
-  Monoid.concat(constantDelay(1), limitRetries(100))
+  Monoid.concat(constantDelay(500), limitRetries(25))
 );
 
 const result = retrying(
   policy,
   (status) => () => {
     console.log(status);
-    return executeRunTweetStream();
+    return getTweetStream();
   },
   E.isLeft
 );
 
-const executeRunTweetStream = pipe(
+const getTweetStream = pipe(
   connectToTweetStream(axiosHttpClientEnv),
   TE.map((tweetStream) =>
     IO.of(
-      pipeline(tweetStream, parseToJson, process.stdout, (err) =>
-        console.error("stream closed")
+      pipeline(
+        tweetStream,
+        parseToJson,
+        stringifyStream,
+        process.stdout,
+        (err) => console.error("stream closed", err)
       )
     )
   )
 );
 
-executeRunTweetStream().then((value) => {
-  console.log(value);
-  if (E.isLeft(value)) {
-    result().then((val) => console.log("failed after retrying?", val));
-  } else {
-    console.log(
-      "succeeded",
+const runTweetStream = () => {
+  return pipe(
+    getTweetStream,
+    TE.fold(
+      (e: NewError) => {
+        switch (e._tag) {
+          case "HttpResponseStatusError":
+            return result; // TODO match on status code and write retry logic for each code type
+          default:
+            return T.of(E.left(e));
+        }
+      },
+      (streamIO) => T.of(E.right(streamIO))
+    ),
+    T.map((stream) =>
       pipe(
-        value,
-        E.map((stream) => stream())
+        stream,
+        E.fold(
+          (e: NewError) => {
+            console.log("unresolvable error", e);
+          },
+          (streamIO) => {
+            console.log("starting stream");
+            streamIO();
+          }
+        )
       )
-    );
-  }
-});
-
-/* const runTweetStream = pipe(
-  executeRunTweetStream,
-  TE.matchEW(
-    (e) => result,
-    (stream) => {
-      console.log("stream sucess");
-      return T.of(stream);
-    }
-  )
-)().then((val) => console.log("stream success")); */
-
-/* runTweetStream().then((stream) =>
-  pipe(
-    stream,
-    E.fold(
-      (e: NewError) => console.log(e),
-      (transformedStream) => transformedStream()
     )
-  )
-); */
+  );
+};
+
+// TODO put this inside of a main IO function
+runTweetStream()();
