@@ -7,6 +7,8 @@
     "dev": "npx ts-node-dev ./src/index.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.49.0",
+    "@google-cloud/language": "^4.3.2",
     "@types/axios": "^0.14.0",
     "axios": "^0.24.0",
     "cors": "^2.8.5",

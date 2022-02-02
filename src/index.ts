@@ -12,7 +12,13 @@ import { twitterAPIService } from "./stream/twitterStreamAPI";
 import { parseToJson, stringifyStream } from "./stream/tweetStreamTransforms";
 import { NewError } from "./Error/Error";
 
-import { capDelay, constantDelay, limitRetries, Monoid } from "retry-ts";
+import {
+  capDelay,
+  constantDelay,
+  limitRetries,
+  Monoid,
+  RetryStatus,
+} from "retry-ts";
 import { retrying } from "retry-ts/Task";
 
 console.log(process.env.BEARER_TOKEN);
@@ -24,16 +30,7 @@ const policy = capDelay(
   Monoid.concat(constantDelay(500), limitRetries(25))
 );
 
-const result = retrying(
-  policy,
-  (status) => () => {
-    console.log(status);
-    return getTweetStream();
-  },
-  E.isLeft
-);
-
-const getTweetStream = pipe(
+/* const getTweetStream = pipe(
   streamAPI.connectToTweetStream,
   TE.map((tweetStream) =>
     IO.of(
@@ -47,37 +44,48 @@ const getTweetStream = pipe(
     )
   )
 );
+ */
+// create new 'retrying' instances for each reconnect logic
+// call them sequentially based on fail conditions
+const connectToStream = retrying(
+  policy,
+  (status) => {
+    console.log(status);
+    return streamAPI.connectToTweetStream;
+  },
+  E.isLeft
+);
 
-const runTweetStream = () => {
+/* const runTweetStream = () => {
   return pipe(
-    getTweetStream,
+    connectToStream,
     TE.fold(
       (e: NewError) => {
         switch (e._tag) {
           case "HttpResponseStatusError":
-            return result; // TODO match on status code and write retry logic for each code type
+            return connectToStream; // TODO match on status code and write retry logic for each code type
           default:
             return T.of(E.left(e));
         }
       },
-      (streamIO) => T.of(E.right(streamIO))
-    ),
-    T.map((stream) =>
-      pipe(
-        stream,
-        E.fold(
-          (e: NewError) => {
-            console.log("unresolvable error", e);
-          },
-          (streamIO) => {
-            console.log("starting stream");
-            streamIO();
-          }
-        )
-      )
+      (streamIO) => T.of(E.right(streamIO.pipe(tweetPipe)))
     )
   );
-};
+}; */
 
 // TODO put this inside of a main IO function
-runTweetStream()();
+connectToStream().then((streamEither) => {
+  pipe(
+    streamEither,
+    E.foldW(
+      (e: NewError) => {
+        console.log(e);
+        connectToStream().then((val) => console.log("failed a second time"));
+      },
+      (stream) =>
+        pipeline(stream, parseToJson, stringifyStream, process.stdout, (err) =>
+          console.error("stream closed", err)
+        )
+    )
+  );
+});
