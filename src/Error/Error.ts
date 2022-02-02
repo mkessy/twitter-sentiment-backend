@@ -72,6 +72,19 @@ export class ParseError extends Error {
   }
 }
 
+export class DynamoDBError extends Error {
+  public _tag: "DynamoDBError";
+
+  private constructor(message: string) {
+    super(`Error parsing data: ${message}`);
+    this._tag = "DynamoDBError";
+  }
+
+  public static of(message: string): DynamoDBError {
+    return new DynamoDBError(message);
+  }
+}
+
 export class BadRequestError extends Error {
   public _tag: "BadRequestError";
 
@@ -91,6 +104,7 @@ export type NewError =
   | NetworkError
   | HttpRequestError
   | HttpDataExtractionError
+  | DynamoDBError
   | HttpResponseStatusError;
 
 export const enum ErrorType {
