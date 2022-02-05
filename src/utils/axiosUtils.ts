@@ -72,7 +72,9 @@ export const getData = <T>(
 
 export const validateStatus =
   (responsesToHandle: ReadonlyArray<StatusCodes>) =>
-  (response: AxiosResponse): E.Either<NewError, AxiosResponse> => {
+  (
+    response: AxiosResponse
+  ): E.Either<HttpResponseStatusError, AxiosResponse> => {
     if (!responsesToHandle.includes(response.status)) {
       return E.left(
         HttpResponseStatusError.of(

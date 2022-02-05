@@ -45,7 +45,7 @@ const tweetStreamConfig: APIConfig = {
   endpoint: "https://api.twitter.com/2/tweets/search/stream",
   axiosConfig: {
     headers: {
-      Authorization: `Bearr ${process.env.BEARER_TOKEN}`,
+      Authorization: `Bearer ${process.env.BEARER_TOKEN}`,
     },
     method: "get",
     responseType: "stream",

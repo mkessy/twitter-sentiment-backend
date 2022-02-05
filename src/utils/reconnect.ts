@@ -1,33 +1,60 @@
 import * as IO from "fp-ts/IO";
 import * as E from "fp-ts/Either";
-import { capDelay, exponentialBackoff, constantDelay } from "retry-ts";
+import {
+  capDelay,
+  exponentialBackoff,
+  constantDelay,
+  RetryPolicy,
+  limitRetries,
+  Monoid,
+} from "retry-ts";
 import { retrying } from "retry-ts/Task";
 import { HttpResponseStatusError } from "../Error/Error";
 import { twitterAPIService } from "../stream/twitterStreamAPI";
 import { axiosHttpClientEnv } from "./axiosUtils";
 
-export const linearBackOffNetworkError = capDelay(16000, constantDelay(500));
-
-export const exponentialBackoffHTTPError = capDelay(
-  320000,
-  exponentialBackoff(5000)
+export const linearBackOffNetworkError = Monoid.concat(
+  capDelay(16000, constantDelay(500)),
+  limitRetries(10)
 );
 
-export const exponentialBackoffRateLimit = exponentialBackoff(60000);
+export const exponentialBackoffHTTPError = Monoid.concat(
+  capDelay(10000, exponentialBackoff(5000)),
+  limitRetries(10)
+);
+
+export const exponentialBackoffRateLimit = Monoid.concat(
+  limitRetries(10),
+  exponentialBackoff(60000)
+);
 
 const streamAPI = twitterAPIService(axiosHttpClientEnv);
 
 export const reconnectStream = (error: HttpResponseStatusError) => {
   switch (error._status) {
     case 429:
-      return retrying(
-        exponentialBackoffRateLimit,
-        (status) => IO.of(streamAPI.connectToTweetStream()),
-        E.isLeft
-      );
+      return makeConnectStreamRetry(exponentialBackoffRateLimit);
     case 403:
-
+    case 401:
+      return makeConnectStreamRetry(exponentialBackoffHTTPError);
+    case 500:
+    case 501:
+    case 502:
+    case 503:
+    case 504:
+    case 511:
+      return makeConnectStreamRetry(linearBackOffNetworkError);
     default:
-      break;
+      return makeConnectStreamRetry(exponentialBackoffHTTPError);
   }
 };
+
+const makeConnectStreamRetry = (policy: RetryPolicy) =>
+  retrying(
+    policy,
+    (status) => {
+      console.log(status);
+      return streamAPI.connectToTweetStream;
+    },
+    E.isLeft
+  );

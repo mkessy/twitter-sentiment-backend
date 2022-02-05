@@ -1,7 +1,8 @@
-import { Stream, pipeline, Transform } from "stream";
+import { Stream, pipeline, Transform, Writable } from "stream";
 import * as E from "fp-ts/Either";
 import * as D from "io-ts/Decoder";
 import { string } from "fp-ts";
+import { pipe } from "fp-ts/lib/function";
 
 type HeartBeat = "hb";
 type JSONObject = any;
@@ -34,17 +35,24 @@ export const logStream = new Transform({
   },
 });
 
+// TO-DO
+
 export const decodeTransformStream = <A>(decoder: D.Decoder<unknown, A>) => {
   return new Transform({
     objectMode: true,
-    transform(jsonObject, endcoding, callback) {
-      callback(null, decoder.decode(jsonObject));
+    transform(chunk, endcoding, callback) {
+      const parsed = chunk === "hb" ? chunk : decoder.decode(chunk);
+      callback(null, parsed);
     },
   });
 };
 
 // if it can't be parsed to JSON assume it is a heartbeat
-const tryParseChunkToJson = E.tryCatchK(
-  (chunk: string) => JSON.parse(chunk),
-  (e) => "hb" as HeartBeat
-);
+export const tryParseChunkToJson = (chunk: any) => {
+  try {
+    const parsedChunk = JSON.parse(chunk);
+    return parsedChunk;
+  } catch (error) {
+    return "hb";
+  }
+};
