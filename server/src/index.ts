@@ -6,7 +6,9 @@ import * as IO from "fp-ts/IO";
 import * as D from "io-ts";
 import { pipeline } from "stream";
 import { inspect } from "util";
-import { fromEvent, of } from "rxjs";
+import { fromEvent, merge, Observable } from "rxjs";
+import { groupBy, map, bufferCount, mergeAll, tap } from "rxjs/operators";
+import * as R from "fp-ts/Refinement";
 import { observable, observableEither } from "fp-ts-rxjs";
 import { tryParseChunkToJson } from "./stream/tweetStreamTransforms";
 
@@ -68,19 +70,33 @@ const main = IO.of<T.Task<void>>(() =>
         },
         (stream) => {
           const tweets$ = fromEvent(stream, "data");
-          const error$ = fromEvent(stream, "error");
+
+          const tweetRefinement = R.fromEitherK((chunk: unknown) =>
+            TweetDecoder.decode(chunk)
+          );
 
           const fb = pipe(
             tweets$,
             observable.map(tryParseChunkToJson),
-            observable.map(TweetDecoder.decode)
-          );
-          const x = fb.subscribe((data) => console.log(data));
-          const errorObserver = error$.subscribe((err) => {
-            console.log("an error was detected: " + err);
-            x.unsubscribe();
-            errorObserver.unsubscribe();
-          });
+            observable.filter(tweetRefinement)
+          )
+            .pipe(
+              tap((x: Tweet) => {
+                if (x.data.text.includes("s")) {
+                  console.log("destroying stream");
+                  stream.destroy();
+                } else {
+                  console.log(x);
+                }
+              })
+            )
+
+            /* .pipe(
+              groupBy((tweet) => tweet.matching_rules[0].id),
+              map((inner) => inner.pipe(bufferCount(5))),
+              mergeAll()
+            ) */
+            .subscribe((x) => console.log(x));
         }
 
         /* 
