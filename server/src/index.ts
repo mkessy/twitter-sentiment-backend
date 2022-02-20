@@ -66,6 +66,7 @@ const main = IO.of<T.Task<void>>(() =>
             default:
               console.log("unexpected error: re-running main " + e);
               main()();
+              break;
           }
         },
         (stream) => {
@@ -81,38 +82,12 @@ const main = IO.of<T.Task<void>>(() =>
             observable.filter(tweetRefinement)
           )
             .pipe(
-              tap((x: Tweet) => {
-                if (x.data.text.includes("s")) {
-                  console.log("destroying stream");
-                  stream.destroy();
-                } else {
-                  console.log(x);
-                }
-              })
-            )
-
-            /* .pipe(
               groupBy((tweet) => tweet.matching_rules[0].id),
-              map((inner) => inner.pipe(bufferCount(5))),
+              map((inner) => inner.pipe(bufferCount(2))),
               mergeAll()
-            ) */
-            .subscribe((x) => console.log(x));
+            )
+            .subscribe((x) => console.log(inspect(x)));
         }
-
-        /* 
-                E.tryCatchK(
-                  () => JSON.parse(a) as string,
-                  (e) => "heartbeat"
-                ) */
-
-        /* pipeline(
-            stream,
-            parseToJson,
-            decodeTransformStream(TweetDecoder),
-            stringifyStream,
-            process.stdout,
-            (err) => console.error("stream closed", err)
-          ) */
       )
     );
   })

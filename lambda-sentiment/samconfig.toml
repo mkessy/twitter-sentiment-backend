@@ -1,0 +1,10 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "football-sentiment"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-t5ib1whzto5d"
+s3_prefix = "football-sentiment"
+region = "us-west-2"
+capabilities = "CAPABILITY_IAM"
+image_repositories = []

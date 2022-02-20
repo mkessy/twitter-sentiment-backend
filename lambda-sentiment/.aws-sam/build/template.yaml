@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: lambda-sentiment
+Transform:
+- AWS::Serverless-2016-10-31
+Resources:
+  processTweetSentiment:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dist/handlers/process-tweet-sentiment.processTweetSentiment
+      Runtime: nodejs14.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Description: A simple example includes a HTTP get method to get all items from
+        a DynamoDB table.
+      Policies:
+      - AmazonDynamoDBFullAccess
+      Environment:
+        Variables:
+          SENTIMENT_TABLE:
+            Ref: SENTIMENT
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /
+            Method: GET
+      CodeUri: processTweetSentiment
+    Metadata:
+      SamResourceId: processTweetSentiment
+  SENTIMENT:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: SENTIMENT
+      AttributeDefinitions:
+      - AttributeName: streamId
+        AttributeType: S
+      - AttributeName: timestamp
+        AttributeType: S
+      KeySchema:
+      - AttributeName: streamId
+        KeyType: HASH
+      - AttributeName: timestamp
+        KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 10
+        WriteCapacityUnits: 10
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+Outputs:
+  WebEndpoint:
+    Description: API Gateway endpoint URL for Prod stage
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/

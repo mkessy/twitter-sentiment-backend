@@ -1,0 +1,26 @@
+{
+  "name": "delete-test-01",
+  "description": "delete-test-01-description",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "aws-sdk": "^2.799.0",
+    "fp-ts": "^2.11.8",
+    "io-ts": "^2.2.16",
+    "monocle-ts": "^2.3.12"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.92",
+    "@types/node": "^17.0.17",
+    "jest": "^26.6.3",
+    "typescript": "^4.5.5"
+  },
+  "scripts": {
+    "test": "jest",
+    "build": "tsc",
+    "watch": "tsc -w"
+  },
+  "files": [
+    "dist/"
+  ]
+}
