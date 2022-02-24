@@ -20,6 +20,7 @@ Resources:
         Variables:
           SENTIMENT_TABLE:
             Ref: SENTIMENT
+          GOOGLE_APPLICATION_CREDENTIALS: /var/task/dist/handlers/google-nl-creds-api.json
       Events:
         Api:
           Type: Api

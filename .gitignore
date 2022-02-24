@@ -1,2 +1,9 @@
 node_modules
 .env
+lambda-sentiment/.aws-sam
+lambda-sentiment/dist/handlers/google-nl-creds-api.json
+lambda-sentiment/dist/handlers/process-tweet-sentiment.js
+lambda-sentiment/log.txt
+lambda-sentiment/.aws-sam/build/processTweetSentiment/dist/handlers/process-tweet-sentiment.js
+lambda-sentiment/.aws-sam/build/processTweetSentiment/dist/handlers/process-tweet-sentiment.js
+lambda-sentiment/dist/handlers/process-tweet-sentiment.js

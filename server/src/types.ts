@@ -8,11 +8,8 @@ import {
   TweetDecoder,
 } from "./decoders";
 import * as D from "io-ts/Decoder";
-import * as t from "io-ts";
-import * as O from "fp-ts/Option";
 import * as TE from "fp-ts/TaskEither";
 import { NewError } from "./Error/Error";
-import { some } from "fp-ts/lib/ReadonlyRecord";
 import { pipe } from "fp-ts/lib/function";
 
 export interface AxiosHttpClient {
@@ -70,3 +67,8 @@ export const StreamIdDecoder: D.Decoder<unknown, StreamId> = pipe(
   D.string,
   D.refine(isStreamIdString, "StreamId")
 );
+
+export type LambdaSentimentPayload = {
+  streamId: StreamId;
+  tweets: Tweet[];
+};

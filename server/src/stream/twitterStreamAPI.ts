@@ -1,8 +1,5 @@
 // functions for handling the /2/tweets/search/stream/ endpoints
 
-import { RetryPolicy, RetryStatus } from "retry-ts";
-import * as TE from "fp-ts/TaskEither";
-import * as E from "fp-ts/Either";
 import * as RTE from "fp-ts/ReaderTaskEither";
 import {
   AxiosHttpClientEnv,
@@ -12,27 +9,23 @@ import {
   AddRulesResponse,
   DeleteRule,
   DeleteRulesResponse,
+  Tweet,
 } from "../types";
 import {
   DeleteRulesDecoder,
   GetRulesResponseDecoder,
   AddRulesResponseDecoder,
   DeleteRulesResponseDecoder,
+  LambdaResponseDecoder,
 } from "../decoders";
-import { ReadableStream } from "node:stream/web";
 import * as dotenv from "dotenv";
 
 import { NewError } from "../Error/Error";
 import { pipe } from "fp-ts/lib/function";
-import {
-  axiosFetchAndDecode,
-  axiosHttpClientEnv,
-  axiosRequest,
-  getData,
-  validateStatus,
-} from "../utils/axiosUtils";
+import { axiosRequest, getData, validateStatus } from "../utils/axiosUtils";
 import * as path from "path";
 import { DecodeError } from "io-ts/lib/Decoder";
+import { lazy } from "io-ts/lib/Kleisli";
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 interface APIConfig {
@@ -142,6 +135,29 @@ const deleteTweetStreamRules: (
     RTE.chainEitherKW(validateStatus([201])),
     RTE.chainTaskEitherK(getData),
     RTE.chainEitherKW(DeleteRulesResponseDecoder.decode)
+  );
+
+const LAMBDA_URL =
+  "https://sfxpyj7qq6.execute-api.us-west-2.amazonaws.com/Prod";
+
+const postToLambdaConfig: APIConfig = {
+  endpoint: LAMBDA_URL,
+  axiosConfig: {
+    headers: {},
+    method: "post",
+    responseType: "json",
+    timeout: 5000,
+  },
+};
+
+export const postTweetsToLambda = (tweets: Tweet[]) =>
+  pipe(
+    postToLambdaConfig,
+    ({ endpoint, axiosConfig }) =>
+      axiosRequest(endpoint, { ...axiosConfig, data: tweets }),
+    RTE.chainEitherKW(validateStatus([200])),
+    RTE.chainTaskEitherK(getData),
+    RTE.chainEitherKW(LambdaResponseDecoder.decode)
   );
 
 export const twitterAPIService = (env: AxiosHttpClientEnv) => ({

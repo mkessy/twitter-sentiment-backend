@@ -95,3 +95,5 @@ export const TweetDecoder = D.partial({
     })
   ),
 });
+
+export const LambdaResponseDecoder = D.struct({});

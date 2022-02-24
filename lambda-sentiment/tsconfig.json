@@ -4,6 +4,7 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "target": "es2020",
+    "resolveJsonModule": true,
 
     "strict": true,
     "esModuleInterop": true,
@@ -13,5 +14,5 @@
     "outDir": "dist",
     "rootDir": "./src"
   },
-  "include": ["./src/**/*.ts", "./src/**/*.js"]
+  "include": ["./src/**/*.ts", "./src/**/*.js", "./src/**/*.json"]
 }

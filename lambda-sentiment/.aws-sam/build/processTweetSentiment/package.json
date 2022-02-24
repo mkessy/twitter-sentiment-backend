@@ -4,7 +4,9 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "aws-sdk": "^2.799.0",
+    "@aws-sdk/client-dynamodb": "^3.52.0",
+    "@google-cloud/language": "^4.3.2",
+    "aws-sdk": "^2.1077.0",
     "fp-ts": "^2.11.8",
     "io-ts": "^2.2.16",
     "monocle-ts": "^2.3.12"
