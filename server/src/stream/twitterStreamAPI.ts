@@ -10,6 +10,7 @@ import {
   DeleteRule,
   DeleteRulesResponse,
   Tweet,
+  LambdaSentimentPayload,
 } from "../types";
 import {
   DeleteRulesDecoder,
@@ -137,8 +138,7 @@ const deleteTweetStreamRules: (
     RTE.chainEitherKW(DeleteRulesResponseDecoder.decode)
   );
 
-const LAMBDA_URL =
-  "https://sfxpyj7qq6.execute-api.us-west-2.amazonaws.com/Prod";
+const LAMBDA_URL = "localhost:3000";
 
 const postToLambdaConfig: APIConfig = {
   endpoint: LAMBDA_URL,
@@ -150,11 +150,11 @@ const postToLambdaConfig: APIConfig = {
   },
 };
 
-export const postTweetsToLambda = (tweets: Tweet[]) =>
+export const postTweetsToLambda = (lambdaPayload: LambdaSentimentPayload) =>
   pipe(
     postToLambdaConfig,
     ({ endpoint, axiosConfig }) =>
-      axiosRequest(endpoint, { ...axiosConfig, data: tweets }),
+      axiosRequest(endpoint, { ...axiosConfig, data: lambdaPayload }),
     RTE.chainEitherKW(validateStatus([200])),
     RTE.chainTaskEitherK(getData),
     RTE.chainEitherKW(LambdaResponseDecoder.decode)

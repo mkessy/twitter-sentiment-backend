@@ -69,6 +69,6 @@ export const StreamIdDecoder: D.Decoder<unknown, StreamId> = pipe(
 );
 
 export type LambdaSentimentPayload = {
-  streamId: StreamId;
+  ruleId: string;
   tweets: Tweet[];
 };

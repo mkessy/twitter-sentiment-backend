@@ -50,12 +50,12 @@ Resources:
     Properties:
       TableName: SENTIMENT
       AttributeDefinitions:
-        - AttributeName: streamId
+        - AttributeName: rulesId
           AttributeType: S
         - AttributeName: timestamp
           AttributeType: S
       KeySchema:
-        - AttributeName: streamId
+        - AttributeName: rulesId
           KeyType: HASH
         - AttributeName: timestamp
           KeyType: RANGE

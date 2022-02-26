@@ -7,3 +7,4 @@ lambda-sentiment/log.txt
 lambda-sentiment/.aws-sam/build/processTweetSentiment/dist/handlers/process-tweet-sentiment.js
 lambda-sentiment/.aws-sam/build/processTweetSentiment/dist/handlers/process-tweet-sentiment.js
 lambda-sentiment/dist/handlers/process-tweet-sentiment.js
+lambda-sentiment/src/handlers/google-nl-creds-api.json
