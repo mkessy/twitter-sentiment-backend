@@ -9,13 +9,21 @@ import {
   APIGatewayProxyResultV2,
 } from "aws-lambda";
 
+import {
+  analyzeSentimentTask,
+  lambdaPayloadToSentimentDocument,
+} from "./utils";
+
 import { pipe } from "fp-ts/lib/function";
-import * as O from "fp-ts/Option";
 import * as E from "fp-ts/Either";
 import * as TE from "fp-ts/TaskEither";
-// Get the DynamoDB table name from envißronment variables
+// Get the DynamoDB table name from environment variables
 
 const languageClient = new LanguageServiceClient();
+const parseJson = E.tryCatchK(
+  (body: string) => JSON.parse(body),
+  (error: unknown) => `Error parsing body: ${error}`
+);
 
 type ProxyHandler = Handler<APIGatewayProxyEventV2, APIGatewayProxyResultV2>;
 
@@ -24,29 +32,30 @@ type ProxyHandler = Handler<APIGatewayProxyEventV2, APIGatewayProxyResultV2>;
  */
 
 export const processTweetSentiment: ProxyHandler = async (event, context) => {
-  const optionParseJson = O.tryCatchK((body: string) => JSON.parse(body));
-  pipe(
-    O.fromNullable(event.body),
-    O.chain(optionParseJson),
-    E.fromOption(() => "Error: Lambda payload invalid"),
-    E.chainW((payload) => LambdaPayloadDecoder.decode(payload))
+  const payload = pipe(
+    E.fromNullable("Error: missing body")(event.body),
+    E.chain(parseJson),
+    E.chainW(LambdaPayloadDecoder.decode),
+    E.map(lambdaPayloadToSentimentDocument)
   );
 
-  // Prepares a document, representing the provided text
-  const document = {
-    content: text,
-    type: "PLAIN_TEXT" as const,
-  };
+  if (E.isLeft(payload))
+    return {
+      statusCode: 403,
+      body: JSON.stringify(`Payload error: ${payload.left}`),
+    };
 
-  // Detects sentiment of entities in the document
-  const [result] = await languageClient.analyzeSentiment({
-    document: document,
-  });
-  console.log(JSON.stringify(result));
-  const entities = result.documentSentiment;
+  const sentiment = await pipe(
+    payload,
+    TE.fromEither,
+    TE.chain((document) => analyzeSentimentTask({ document })(languageClient))
+  )();
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify(entities),
-  };
+  return pipe(
+    sentiment,
+    E.fold(
+      (err) => ({ statusCode: 500, body: JSON.stringify(err) }),
+      ([result]) => ({ statusCode: 200, body: JSON.stringify(result) })
+    )
+  );
 };
