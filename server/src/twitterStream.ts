@@ -3,8 +3,6 @@ import { pipe } from "fp-ts/lib/function";
 import * as T from "fp-ts/Task";
 import * as E from "fp-ts/Either";
 import * as IO from "fp-ts/IO";
-import * as D from "io-ts";
-import { pipeline } from "stream";
 import { inspect } from "util";
 import { fromEvent, merge, Observable } from "rxjs";
 import { groupBy, map, bufferCount, mergeAll, tap } from "rxjs/operators";
@@ -25,9 +23,7 @@ import { NewError } from "./Error/Error";
 import { capDelay, constantDelay, limitRetries, Monoid } from "retry-ts";
 import { retrying } from "retry-ts/Task";
 import { reconnectStream } from "./utils/reconnect";
-import { StreamIdDecoder, Tweet } from "./types";
 import { TweetDecoder } from "./decoders";
-import { DecodeError } from "io-ts/lib/DecodeError";
 
 console.log(process.env.BEARER_TOKEN);
 const streamAPI = twitterAPIService(axiosHttpClientEnv);

@@ -1,8 +1,8 @@
 import * as RTE from "fp-ts/ReaderTaskEither";
 import * as TE from "fp-ts/TaskEither";
+import * as E from "fp-ts/Either";
 
 import { LanguageServiceClient } from "@google-cloud/language";
-import IAnalyzeSentimentRequest from "@google-cloud/language";
 import { pipe, flow } from "fp-ts/lib/function";
 import { google } from "@google-cloud/language/build/protos/protos";
 import { LambdaPayload } from "../types";
@@ -29,3 +29,8 @@ export const lambdaPayloadToSentimentDocument = (payload: LambdaPayload) =>
     A.reduce("", (acc, curr) => `${acc}\n${curr.data?.text}`),
     (documentText) => ({ content: documentText, type: "PLAIN_TEXT" as const })
   );
+
+export const parseJson = E.tryCatchK(
+  (body: string) => JSON.parse(body),
+  (error: unknown) => `Error parsing body: ${error}`
+);

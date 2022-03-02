@@ -2,7 +2,6 @@ import { observable } from "fp-ts-rxjs";
 import { pipe } from "fp-ts/lib/function";
 import { fromEvent, Observable, Observer } from "rxjs";
 import { groupBy, bufferCount, mergeAll, map } from "rxjs/operators";
-import { inspect } from "util";
 import { TweetDecoder } from "../decoders";
 import * as R from "fp-ts/Refinement";
 import { tryParseChunkToJson } from "./tweetStreamTransforms";
@@ -16,7 +15,12 @@ export const processStream = (stream: NodeJS.ReadStream) => {
     observable.map(tryParseChunkToJson),
     observable.filter(tweetRefinement),
     groupStreamTweets(25),
-    observable.map((tweets) => postTweetsToLambda(tweets)(axiosHttpClientEnv))
+    observable.map((tweets) =>
+      postTweetsToLambda({
+        ruleId: tweets[0].matching_rules[0].id,
+        tweets,
+      })(axiosHttpClientEnv)
+    )
     // TODO
   );
 

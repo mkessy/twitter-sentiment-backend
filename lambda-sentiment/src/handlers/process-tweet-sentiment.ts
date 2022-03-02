@@ -9,9 +9,12 @@ import {
   APIGatewayProxyResultV2,
 } from "aws-lambda";
 
+import { SentimentDataPoint } from "../types";
+
 import {
   analyzeSentimentTask,
   lambdaPayloadToSentimentDocument,
+  parseJson,
 } from "./utils";
 
 import { pipe } from "fp-ts/lib/function";
@@ -20,11 +23,7 @@ import * as TE from "fp-ts/TaskEither";
 // Get the DynamoDB table name from environment variables
 
 const languageClient = new LanguageServiceClient();
-const parseJson = E.tryCatchK(
-  (body: string) => JSON.parse(body),
-  (error: unknown) => `Error parsing body: ${error}`
-);
-
+const SENTIMENT_TABLE = process.env.SENTIMENT;
 type ProxyHandler = Handler<APIGatewayProxyEventV2, APIGatewayProxyResultV2>;
 
 /**
