@@ -1,0 +1,65 @@
+{
+  "ruleId": "1000",
+  "tweets": [
+    {
+      "data": {
+        "id": "1",
+        "text": "this is a fake tweet!"
+      },
+      "matching_rules": [
+        {
+          "id": "1000",
+          "tag": "fake_rule"
+        }
+      ]
+    },
+    {
+      "data": {
+        "id": "2",
+        "text": "fuck arsenal to hell!"
+      },
+      "matching_rules": [
+        {
+          "id": "1000",
+          "tag": "fake_rule"
+        }
+      ]
+    },
+    {
+      "data": {
+        "id": "3",
+        "text": "fuck this bullshit honestly"
+      },
+      "matching_rules": [
+        {
+          "id": "1000",
+          "tag": "fake_rule"
+        }
+      ]
+    },
+    {
+      "data": {
+        "id": "4",
+        "text": "fuck this wack ass shit"
+      },
+      "matching_rules": [
+        {
+          "id": "1000",
+          "tag": "fake_rule"
+        }
+      ]
+    },
+    {
+      "data": {
+        "id": "5",
+        "text": "I love lacazette!"
+      },
+      "matching_rules": [
+        {
+          "id": "1000",
+          "tag": "fake_rule"
+        }
+      ]
+    }
+  ]
+}

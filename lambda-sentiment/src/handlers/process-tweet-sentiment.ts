@@ -2,6 +2,7 @@
 
 import { LanguageServiceClient } from "@google-cloud/language";
 import { LambdaPayloadDecoder } from "./decoder";
+import { putItem } from "./db";
 
 import {
   Handler,
@@ -23,7 +24,6 @@ import * as TE from "fp-ts/TaskEither";
 // Get the DynamoDB table name from environment variables
 
 const languageClient = new LanguageServiceClient();
-const SENTIMENT_TABLE = process.env.SENTIMENT;
 type ProxyHandler = Handler<APIGatewayProxyEventV2, APIGatewayProxyResultV2>;
 
 /**
@@ -31,30 +31,38 @@ type ProxyHandler = Handler<APIGatewayProxyEventV2, APIGatewayProxyResultV2>;
  */
 
 export const processTweetSentiment: ProxyHandler = async (event, context) => {
-  const payload = pipe(
-    E.fromNullable("Error: missing body")(event.body),
-    E.chain(parseJson),
-    E.chainW(LambdaPayloadDecoder.decode),
-    E.map(lambdaPayloadToSentimentDocument)
-  );
-
-  if (E.isLeft(payload))
-    return {
-      statusCode: 403,
-      body: JSON.stringify(`Payload error: ${payload.left}`),
-    };
-
-  const sentiment = await pipe(
-    payload,
-    TE.fromEither,
-    TE.chain((document) => analyzeSentimentTask({ document })(languageClient))
+  const response = await pipe(
+    TE.bindTo("payload")(
+      pipe(
+        E.fromNullable("Error: missing body")(event.body),
+        E.chain(parseJson),
+        E.chainW(LambdaPayloadDecoder.decode),
+        TE.fromEither
+      )
+    ),
+    TE.bindW("doc", ({ payload }) =>
+      pipe(lambdaPayloadToSentimentDocument(payload), (sentimentDoc) =>
+        analyzeSentimentTask({ document: sentimentDoc })(languageClient)
+      )
+    ),
+    TE.bindW("data", ({ payload, doc }) => {
+      const [sentiment] = doc;
+      const { ruleId, tweets } = payload;
+      return putItem({
+        ruleId,
+        sentiment,
+        tweets,
+        timestamp: Date.now().toString(),
+      });
+    }),
+    TE.map(({ data }) => data)
   )();
 
   return pipe(
-    sentiment,
+    response,
     E.fold(
       (err) => ({ statusCode: 500, body: JSON.stringify(err) }),
-      ([result]) => ({ statusCode: 200, body: JSON.stringify(result) })
+      (result) => ({ statusCode: 200, body: JSON.stringify(result) })
     )
   );
 };

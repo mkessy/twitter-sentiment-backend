@@ -8,3 +8,10 @@ lambda-sentiment/.aws-sam/build/processTweetSentiment/dist/handlers/process-twee
 lambda-sentiment/.aws-sam/build/processTweetSentiment/dist/handlers/process-tweet-sentiment.js
 lambda-sentiment/dist/handlers/process-tweet-sentiment.js
 lambda-sentiment/src/handlers/google-nl-creds-api.json
+lambda-sentiment/.aws-sam/build/processTweetSentiment/dist/handlers/process-tweet-sentiment.js
+lambda-sentiment/dist/*
+lambda-sentiment/dist/handlers/*.js
+lambda-sentiment/.aws-sam/build/processTweetSentiment/dist/handlers/process-tweet-sentiment.js
+lambda-sentiment/dist/handlers/process-tweet-sentiment.js
+lambda-sentiment/.aws-sam/build/processTweetSentiment/dist/handlers/process-tweet-sentiment.js
+lambda-sentiment/dist/handlers/process-tweet-sentiment.js

@@ -18,29 +18,29 @@ Resources:
       - AmazonDynamoDBFullAccess
       Environment:
         Variables:
-          SENTIMENT_TABLE:
-            Ref: SENTIMENT
+          DATABASE_TABLE:
+            Ref: TWEETSENTIMENT
           GOOGLE_APPLICATION_CREDENTIALS: /var/task/dist/handlers/google-nl-creds-api.json
       Events:
         Api:
           Type: Api
           Properties:
             Path: /
-            Method: GET
+            Method: POST
       CodeUri: processTweetSentiment
     Metadata:
       SamResourceId: processTweetSentiment
-  SENTIMENT:
+  TWEETSENTIMENT:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: SENTIMENT
+      TableName: TWEETSENTIMENT
       AttributeDefinitions:
-      - AttributeName: streamId
+      - AttributeName: ruleId
         AttributeType: S
       - AttributeName: timestamp
         AttributeType: S
       KeySchema:
-      - AttributeName: streamId
+      - AttributeName: ruleId
         KeyType: HASH
       - AttributeName: timestamp
         KeyType: RANGE

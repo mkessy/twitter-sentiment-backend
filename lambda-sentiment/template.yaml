@@ -34,28 +34,28 @@ Resources:
       Environment:
         Variables:
           # Make table name accessible as environment variable from function code during execution
-          SENTIMENT_TABLE: !Ref SENTIMENT
+          DATABASE_TABLE: !Ref TWEETSENTIMENT
           GOOGLE_APPLICATION_CREDENTIALS: "/var/task/dist/handlers/google-nl-creds-api.json"
       Events:
         Api:
           Type: Api
           Properties:
             Path: /
-            Method: GET
+            Method: POST
   # Each Lambda function is defined by properties:
   # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
 
-  SENTIMENT:
+  TWEETSENTIMENT:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: SENTIMENT
+      TableName: TWEETSENTIMENT
       AttributeDefinitions:
-        - AttributeName: rulesId
+        - AttributeName: ruleId
           AttributeType: S
         - AttributeName: timestamp
           AttributeType: S
       KeySchema:
-        - AttributeName: rulesId
+        - AttributeName: ruleId
           KeyType: HASH
         - AttributeName: timestamp
           KeyType: RANGE
