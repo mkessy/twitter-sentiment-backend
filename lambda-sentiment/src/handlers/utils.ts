@@ -2,6 +2,12 @@ import * as RTE from "fp-ts/ReaderTaskEither";
 import * as TE from "fp-ts/TaskEither";
 import * as E from "fp-ts/Either";
 
+import {
+  LambdaError,
+  GoogleLanguageServiceError,
+  makeLambdaError,
+} from "./error";
+
 import { LanguageServiceClient } from "@google-cloud/language";
 import { pipe, flow } from "fp-ts/lib/function";
 import { google } from "@google-cloud/language/build/protos/protos";
@@ -12,7 +18,7 @@ const analyzeSentiment = (client: LanguageServiceClient) =>
   TE.tryCatchK(
     (document: google.cloud.language.v1.IAnalyzeSentimentRequest) =>
       client.analyzeSentiment(document),
-    (reason) => `Error: ${reason}`
+    (reason) => makeLambdaError("GoogleLanguageServiceError", String(reason))
   );
 
 export const analyzeSentimentTask = (
@@ -32,5 +38,12 @@ export const lambdaPayloadToSentimentDocument = (payload: LambdaPayload) =>
 
 export const parseJson = E.tryCatchK(
   (body: string) => JSON.parse(body),
-  (error: unknown) => `Error parsing body: ${error}`
+  (error: unknown) =>
+    makeLambdaError(
+      "InvalidOrMissingEventBodyError",
+      `Error parsing body: ${error}`
+    )
 );
+
+// TO DO
+//export const makeErrorResponse;

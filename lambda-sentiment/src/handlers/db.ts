@@ -7,6 +7,8 @@ import {
   PutCommandOutput,
 } from "@aws-sdk/lib-dynamodb";
 
+import { makeLambdaError } from "./error";
+
 import { SentimentDataPoint } from "../types";
 
 import * as TE from "fp-ts/TaskEither";
@@ -30,5 +32,5 @@ export const putItem = TE.tryCatchK(
   (data: SentimentDataPoint) =>
     ddbDocClient.send(new PutCommand(SentimentDataPointToDynamoParams(data))),
 
-  (reason: unknown) => String(reason)
+  (reason: unknown) => makeLambdaError("DynamoDbError", String(reason))
 );

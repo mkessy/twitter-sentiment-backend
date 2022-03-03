@@ -3,6 +3,13 @@
 import { LanguageServiceClient } from "@google-cloud/language";
 import { LambdaPayloadDecoder } from "./decoder";
 import { putItem } from "./db";
+import {
+  LambdaError,
+  DynamoDbError,
+  GoogleLanguageServiceError,
+  InvalidOrMissingEventBodyError,
+  makeLambdaError,
+} from "./error";
 
 import {
   Handler,
@@ -34,8 +41,12 @@ export const processTweetSentiment: ProxyHandler = async (event, context) => {
   const response = await pipe(
     TE.bindTo("payload")(
       pipe(
-        E.fromNullable("Error: missing body")(event.body),
-        E.chain(parseJson),
+        E.fromNullable<LambdaError>(
+          makeLambdaError(
+            "InvalidOrMissingEventBodyError",
+            "The event body attribute cannot be empty"
+          )
+        )(event.body),
         E.chainW(LambdaPayloadDecoder.decode),
         TE.fromEither
       )
@@ -61,6 +72,7 @@ export const processTweetSentiment: ProxyHandler = async (event, context) => {
   return pipe(
     response,
     E.fold(
+      // TODO add functions for generating error responses by matching error type
       (err) => ({ statusCode: 500, body: JSON.stringify(err) }),
       (result) => ({ statusCode: 200, body: JSON.stringify(result) })
     )
