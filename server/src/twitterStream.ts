@@ -24,6 +24,7 @@ import { capDelay, constantDelay, limitRetries, Monoid } from "retry-ts";
 import { retrying } from "retry-ts/Task";
 import { reconnectStream } from "./utils/reconnect";
 import { TweetDecoder } from "./decoders";
+import { processStream } from "./stream/processStream";
 
 console.log(process.env.BEARER_TOKEN);
 const streamAPI = twitterAPIService(axiosHttpClientEnv);
@@ -50,41 +51,20 @@ const main = IO.of<T.Task<void>>(() =>
   connectToStream().then((streamEither) => {
     pipe(
       streamEither,
-      E.foldW(
-        async (e: NewError) => {
-          console.log(inspect(e));
-          switch (e._tag) {
-            case "HttpResponseStatusError":
-              const stream = await reconnectStream(e)();
-              console.log("failed after retries");
-              if (E.isLeft(stream)) main()();
-              else break;
-            default:
-              console.log("unexpected error: re-running main " + e);
-              main()();
-              break;
-          }
-        },
-        (stream) => {
-          const tweets$ = fromEvent(stream, "data");
-
-          const tweetRefinement = R.fromEitherK((chunk: unknown) =>
-            TweetDecoder.decode(chunk)
-          );
-
-          const fb = pipe(
-            tweets$,
-            observable.map(tryParseChunkToJson),
-            observable.filter(tweetRefinement)
-          )
-            .pipe(
-              groupBy((tweet) => tweet.matching_rules[0].id),
-              map((inner) => inner.pipe(bufferCount(2))),
-              mergeAll()
-            )
-            .subscribe((x) => console.log(inspect(x)));
+      E.foldW(async (e: NewError) => {
+        console.log(inspect(e));
+        switch (e._tag) {
+          case "HttpResponseStatusError":
+            const stream = await reconnectStream(e)();
+            console.log("failed after retries");
+            if (E.isLeft(stream)) main()();
+            else break;
+          default:
+            console.log("unexpected error: re-running main " + e);
+            main()();
+            break;
         }
-      )
+      }, processStream)
     );
   })
 );

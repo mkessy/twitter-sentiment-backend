@@ -83,7 +83,7 @@ export const DeleteRulesResponseDecoder = pipe(
   D.intersect(ErrorDecoder)
 );
 
-export const TweetDecoder = D.partial({
+export const TweetDecoder = D.struct({
   data: D.struct({
     id: D.string,
     text: D.string,

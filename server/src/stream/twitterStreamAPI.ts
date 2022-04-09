@@ -26,7 +26,6 @@ import { pipe } from "fp-ts/lib/function";
 import { axiosRequest, getData, validateStatus } from "../utils/axiosUtils";
 import * as path from "path";
 import { DecodeError } from "io-ts/lib/Decoder";
-import { lazy } from "io-ts/lib/Kleisli";
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 interface APIConfig {
@@ -156,8 +155,8 @@ export const postTweetsToLambda = (lambdaPayload: LambdaSentimentPayload) =>
     ({ endpoint, axiosConfig }) =>
       axiosRequest(endpoint, { ...axiosConfig, data: lambdaPayload }),
     RTE.chainEitherKW(validateStatus([200])),
-    RTE.chainTaskEitherK(getData),
-    RTE.chainEitherKW(LambdaResponseDecoder.decode)
+    RTE.chainTaskEitherK(getData)
+    //RTE.chainEitherKW(LambdaResponseDecoder.decode)
   );
 
 export const twitterAPIService = (env: AxiosHttpClientEnv) => ({
