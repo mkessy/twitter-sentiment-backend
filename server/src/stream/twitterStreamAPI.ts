@@ -137,7 +137,8 @@ const deleteTweetStreamRules: (
     RTE.chainEitherKW(DeleteRulesResponseDecoder.decode)
   );
 
-const LAMBDA_URL = "localhost:3000";
+const LAMBDA_URL =
+  "https://sfxpyj7qq6.execute-api.us-west-2.amazonaws.com/Prod";
 
 const postToLambdaConfig: APIConfig = {
   endpoint: LAMBDA_URL,

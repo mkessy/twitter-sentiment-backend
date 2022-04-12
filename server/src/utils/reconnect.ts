@@ -9,7 +9,7 @@ import {
   Monoid,
 } from "retry-ts";
 import { retrying } from "retry-ts/Task";
-import { HttpResponseStatusError } from "../Error/Error";
+import { NewError, HttpResponseStatusError } from "../Error/Error";
 import { twitterAPIService } from "../stream/twitterStreamAPI";
 import { axiosHttpClientEnv } from "./axiosUtils";
 
@@ -30,7 +30,9 @@ export const exponentialBackoffRateLimit = Monoid.concat(
 
 const streamAPI = twitterAPIService(axiosHttpClientEnv);
 
-export const reconnectStream = (error: HttpResponseStatusError) => {
+export const reconnectStream = (error: NewError) => {
+  if (error._tag !== "HttpResponseStatusError")
+    return makeConnectStreamRetry(exponentialBackoffHTTPError);
   switch (error._status) {
     case 429:
       return makeConnectStreamRetry(exponentialBackoffRateLimit);

@@ -23,8 +23,8 @@ import { NewError } from "./Error/Error";
 
 import { reconnectStream } from "./utils/reconnect";
 import { processStream } from "./stream/processStream";
+import { getProcessedStream } from "./stream/streamService";
 
-console.log(process.env.BEARER_TOKEN);
 const streamAPI = twitterAPIService(axiosHttpClientEnv);
 
 // create new 'retrying' instances for each reconnect logic
@@ -33,5 +33,14 @@ const streamAPI = twitterAPIService(axiosHttpClientEnv);
 // TODO put this inside of a main IO function
 
 const main: IO.IO<void> = () => {
-  const connectToStream = streamAPI.connectToTweetStream;
+  getProcessedStream().subscribe((val) =>
+    pipe(
+      val,
+      E.fold(
+        (e) => console.log(`${e}`),
+        (processedVal) =>
+          console.log(`Processed Value: ${inspect(processedVal)}`)
+      )
+    )
+  );
 };
