@@ -32,12 +32,11 @@ export const processStream = (stream: NodeJS.ReadStream) => {
     mergeAll()
   );
 
-  // need to catch heartbeat
   const groupedTweets$ = pipe(
     fromEvent(stream, "data"),
     observable.map(tryParseChunkToJson),
-    observable.filter(tweetRefinement)
-  ).pipe(
+    // should catch heartbeat and cancel stream if it isn't detected for a determined amount of time
+    observable.filter(tweetRefinement),
     groupBy(
       (tweet) => tweet.matching_rules[0].id,
       (tweet) => tweet,
@@ -45,36 +44,19 @@ export const processStream = (stream: NodeJS.ReadStream) => {
     ),
     concatMap((group$) =>
       group$.pipe(
-        bufferCount(2),
+        bufferCount(20), //TODO remove magic number for group buffers
         map((tweets) => [group$.key, tweets] as const)
       )
-    )
-  );
-
-  return groupedTweets$.pipe(
-    mergeMap(([ruleId, tweets]) =>
-      /* from(
-          Promise.resolve(
-            E.right<NewError, any>(HttpResponseStatusError.of("poop", 404))
-          )
-        ) */
-      from(postTweetsToLambda({ ruleId, tweets })(axiosHttpClientEnv)())
-    )
-    // takeUntil(cancelEvents)
-  );
-
-  //TODO remove magic number for group buffers
-};
-
-const groupStreamTweets = (buffCount: number) => (tweets$: Observable<Tweet>) =>
-  tweets$.pipe(
-    groupBy(
-      (tweet) => tweet.matching_rules[0].id,
-      (tweet) => tweet
     ),
-    map((inner) => zip(of(inner.key), inner.pipe(bufferCount(buffCount)))),
-    mergeAll()
+    mergeMap(([ruleId, tweets]) =>
+      from(postTweetsToLambda({ ruleId, tweets })(axiosHttpClientEnv)())
+    ),
+
+    takeUntil(cancelEvents)
   );
+
+  return groupedTweets$;
+};
 
 const tweetRefinement = R.fromEitherK((chunk: unknown) =>
   TweetDecoder.decode(chunk)

@@ -10,6 +10,8 @@ import { NewError } from "../Error/Error";
 import { map, share } from "rxjs/operators";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as E from "fp-ts/lib/Either";
+import { Subject } from "rxjs";
+import { Observable } from "rxjs/internal/Observable";
 
 export const getProcessedStream = () => {
   return pipe(
@@ -25,3 +27,20 @@ export const getProcessedStream = () => {
 
   //return processStream(rawStream.right).pipe(share());
 };
+
+type ProcessedStreamItem<ProcessedItem> = ProcessedItem extends Observable<
+  infer T
+>
+  ? T
+  : never;
+
+// class that has ownership over the tweet stream
+// can be subscribed to
+// should maintain the only connection instances to the twitter api
+export class StreamService {
+  private _eventBus = new Subject<
+    ProcessedStreamItem<ReturnType<typeof getProcessedStream>>
+  >();
+
+  private complete = false;
+}

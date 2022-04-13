@@ -1,29 +1,13 @@
 import { axiosHttpClientEnv } from "./utils/axiosUtils";
 import { pipe } from "fp-ts/lib/function";
-import * as TE from "fp-ts/TaskEither";
-import * as T from "fp-ts/Task";
 import * as E from "fp-ts/Either";
 import * as IO from "fp-ts/IO";
 import { inspect } from "util";
-import { fromEvent, merge, Observable } from "rxjs";
-import { groupBy, map, bufferCount, mergeAll, tap } from "rxjs/operators";
-import * as R from "fp-ts/Refinement";
-import { observable, observableEither } from "fp-ts-rxjs";
-import { tryParseChunkToJson } from "./stream/tweetStreamTransforms";
 
 import "dotenv/config";
 
 import { twitterAPIService } from "./stream/twitterStreamAPI";
-import {
-  decodeTransformStream,
-  parseToJson,
-  stringifyStream,
-} from "./stream/tweetStreamTransforms";
-import { NewError } from "./Error/Error";
-
-import { reconnectStream } from "./utils/reconnect";
-import { processStream } from "./stream/processStream";
-import { getProcessedStream } from "./stream/streamService";
+import { getProcessedStream } from "./stream/StreamService";
 
 const streamAPI = twitterAPIService(axiosHttpClientEnv);
 

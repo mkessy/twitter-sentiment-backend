@@ -41,34 +41,11 @@ export type DeleteRulesResponse = D.TypeOf<typeof DeleteRulesResponseDecoder>;
 
 export type Tweet = D.TypeOf<typeof TweetDecoder>;
 
-// a streamId is [5-10 characters(letters only)]-[5-digit number]
-interface StreamIdBrand {
-  readonly StreamId: unique symbol;
-}
-export type StreamId = string & StreamIdBrand;
-
-const isStreamIdString = (value: string): value is StreamId => {
-  const lettersRegex = /^[A-Za-z]+$/;
-  const numbersRegex = /^[0-9]+$/;
-  const [letters, numbers] = value.split("-");
-  if (letters === undefined) return false;
-  if (numbers === undefined) return false;
-
-  if (letters.length > 10 || letters.length < 5) return false;
-  if (numbers.length !== 5) return false;
-
-  if (!lettersRegex.test(letters)) return false;
-  if (!numbersRegex.test(numbers)) return false;
-
-  return true;
-};
-
-export const StreamIdDecoder: D.Decoder<unknown, StreamId> = pipe(
-  D.string,
-  D.refine(isStreamIdString, "StreamId")
-);
-
 export type LambdaSentimentPayload = {
   ruleId: string;
   tweets: Tweet[];
 };
+
+/* export interface ITweetStreamBroadcastEvent {
+  _tag: 
+} */
