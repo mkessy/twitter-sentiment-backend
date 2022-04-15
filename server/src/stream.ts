@@ -2,12 +2,11 @@ import { axiosHttpClientEnv } from "./utils/axiosUtils";
 import { pipe } from "fp-ts/lib/function";
 import * as E from "fp-ts/Either";
 import * as IO from "fp-ts/IO";
-import { inspect } from "util";
+import StreamService from "./stream/StreamService";
 
 import "dotenv/config";
 
 import { twitterAPIService } from "./stream/twitterStreamAPI";
-import { getProcessedStream } from "./stream/StreamService";
 
 const streamAPI = twitterAPIService(axiosHttpClientEnv);
 
@@ -16,15 +15,23 @@ const streamAPI = twitterAPIService(axiosHttpClientEnv);
 
 // TODO put this inside of a main IO function
 
-const main: IO.IO<void> = () => {
-  getProcessedStream().subscribe((val) =>
-    pipe(
-      val,
-      E.fold(
-        (e) => console.log(`${e}`),
-        (processedVal) =>
-          console.log(`Processed Value: ${inspect(processedVal)}`)
-      )
-    )
-  );
+const main: IO.IO<void> = async () => {
+  const connectTolistener = async () => {
+    const listener = await StreamService.getListener();
+
+    listener.subscribe({
+      next: (v) => {
+        console.log(v);
+      },
+      complete: () => {
+        console.log("stream complete signal registered");
+        console.log("reconnecting listener...");
+        connectTolistener();
+      },
+    });
+  };
+
+  connectTolistener();
 };
+
+main();
