@@ -55,7 +55,7 @@ const makeConnectStreamRetry = (policy: RetryPolicy) =>
   retrying(
     policy,
     (status) => {
-      console.log(status);
+      console.info(status);
       return streamAPI.connectToTweetStream;
     },
     E.isLeft

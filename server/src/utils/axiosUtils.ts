@@ -104,7 +104,7 @@ const axiosPost = async <T, D>(
   data: D,
   config?: AxiosRequiredConfig
 ) => {
-  console.log(`posting ${url}`);
+  console.info(`posting ${url}`);
   return axios
     .post<T>(url, data, {
       ...config,

@@ -84,8 +84,8 @@ const seedDb = async () => {
   pipe(
     createdTables,
     E.fold(
-      (e: NewError) => console.log("Failed to seed database: " + e.message),
-      (tables) => console.log("Created tables: " + util.inspect(tables))
+      (e: NewError) => console.info("Failed to seed database: " + e.message),
+      (tables) => console.info("Created tables: " + util.inspect(tables))
     )
   );
 };
