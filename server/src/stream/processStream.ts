@@ -21,43 +21,66 @@ import { asyncScheduler } from "rxjs";
 import { fromTaskEither } from "fp-ts-rxjs/lib/ObservableEither";
 import { HttpResponseStatusError, NewError } from "../Error/Error";
 import { ReplaySubject } from "rxjs";
+import { flow } from "fp-ts/lib/function";
+import util from "util";
+import { finished } from "stream";
 
-export const processStream = (stream: NodeJS.ReadStream) => {
-  // all error/stream end events that should trigger clean up of subs
-  const close$ = fromEvent(stream, "close");
+// consumes the stream instance and returns an observable that will complete if the node stream closes for any reason
+
+export const nodeTweetStreamToObservable = (
+  stream: NodeJS.ReadStream,
+  callback: (err: unknown) => void
+) => {
+  if (!stream.isPaused) stream.pause();
+
+  const data$ = fromEvent<unknown>(stream, "data");
+  /* const close$ = fromEvent(stream, "close");
   const end$ = fromEvent(stream, "end");
   const error$ = fromEvent<Error>(stream, "error");
 
   const cancelEvents = scheduled([close$, end$, error$], asyncScheduler).pipe(
     mergeAll()
-  );
+  ); */
 
-  const groupedTweets$ = pipe(
-    fromEvent(stream, "data"),
-    observable.map(tryParseChunkToJson),
-    // should catch heartbeat and cancel stream if it isn't detected for a determined amount of time
-    observable.filter(tweetRefinement),
-    groupBy(
-      (tweet) => tweet.matching_rules[0].id,
-      (tweet) => tweet,
-      () => new ReplaySubject()
-    ),
-    concatMap((group$) =>
-      group$.pipe(
-        bufferCount(20), //TODO remove magic number for group buffers
-        map((tweets) => [group$.key, tweets] as const)
-      )
-    ),
-    mergeMap(([ruleId, tweets]) =>
-      from(postTweetsToLambda({ ruleId, tweets })(axiosHttpClientEnv)())
-    ),
+  const cleanUp = finished(stream, (err: unknown) => {
+    console.info(`encountered an error: ${err}`);
+    console.info(`tearing node stream down`);
+    callback(err);
+    cleanUp();
+    stream.destroy();
+  });
 
-    takeUntil(cancelEvents)
-  );
-
-  return groupedTweets$;
+  stream.resume();
+  return [data$, cleanUp] as const;
 };
 
 const tweetRefinement = R.fromEitherK((chunk: unknown) =>
   TweetDecoder.decode(chunk)
+);
+
+export const groupAndPostToLambda: (
+  fa: Observable<unknown>
+) => Observable<E.Either<NewError, unknown>> = flow(
+  observable.map(tryParseChunkToJson),
+  // should catch heartbeat and cancel stream if it isn't detected for a determined amount of time
+  observable.filter(tweetRefinement),
+  groupBy(
+    (tweet) => tweet.matching_rules[0].id,
+    (tweet) => tweet,
+    () => new ReplaySubject()
+  ),
+  concatMap((group$) =>
+    group$.pipe(
+      bufferCount(2), //TODO remove magic number for group buffers
+      map((tweets) => [group$.key, tweets] as const)
+    )
+  ),
+  mergeMap(([ruleId, tweets]) =>
+    from(postTweetsToLambda({ ruleId, tweets })(axiosHttpClientEnv)())
+  ),
+  map((v) => {
+    console.info("attempted to post tweet group to lambda");
+    console.info(`attempt: ${E.isLeft(v) ? "failed" : "succeeded"}`);
+    return v;
+  })
 );
