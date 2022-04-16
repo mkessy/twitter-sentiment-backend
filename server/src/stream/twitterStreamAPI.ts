@@ -94,16 +94,20 @@ const addRulesConfig: APIConfig = {
 };
 
 const addTweetStreamRules: (
-  rules: AddRule
+  rules: AddRule,
+  dryRun: boolean
 ) => RTE.ReaderTaskEither<
   AxiosHttpClientEnv,
   NewError | DecodeError,
   AddRulesResponse
-> = (rules) =>
+> = (rules, dryRun) =>
   pipe(
     addRulesConfig,
     ({ endpoint, axiosConfig }) =>
-      axiosRequest(endpoint, { ...axiosConfig, data: rules }),
+      axiosRequest(`${endpoint}?dry_run=${dryRun}`, {
+        ...axiosConfig,
+        data: rules,
+      }),
     RTE.chainEitherKW(validateStatus([201])),
     RTE.chainTaskEitherK(getData),
     RTE.chainEitherKW(AddRulesResponseDecoder.decode)
@@ -122,26 +126,27 @@ const deleteRulesConfig: APIConfig = {
 };
 
 const deleteTweetStreamRules: (
-  rules: DeleteRule
+  rules: DeleteRule,
+  dryRun: boolean
 ) => RTE.ReaderTaskEither<
   AxiosHttpClientEnv,
   NewError | DecodeError,
   DeleteRulesResponse
-> = (rules) =>
+> = (rules, dryRun) =>
   pipe(
     deleteRulesConfig,
     ({ endpoint, axiosConfig }) =>
-      axiosRequest(endpoint, { ...axiosConfig, data: rules }),
+      axiosRequest(`${endpoint}?dry_run=${dryRun}`, {
+        ...axiosConfig,
+        data: rules,
+      }),
     RTE.chainEitherKW(validateStatus([201])),
     RTE.chainTaskEitherK(getData),
     RTE.chainEitherKW(DeleteRulesResponseDecoder.decode)
   );
 
-const LAMBDA_URL =
-  "https://sfxpyj7qq6.execute-api.us-west-2.amazonaws.com/Prod";
-
 const postToLambdaConfig: APIConfig = {
-  endpoint: LAMBDA_URL,
+  endpoint: `${process.env.LAMBDA_URL}`,
   axiosConfig: {
     headers: {},
     method: "post",
@@ -163,7 +168,8 @@ export const postTweetsToLambda = (lambdaPayload: LambdaSentimentPayload) =>
 export const twitterAPIService = (env: AxiosHttpClientEnv) => ({
   connectToTweetStream: connectToTweetStream(env),
   getTweetStreamRules: getTweetStreamRules(env),
-  addTweetStreamRules: (rules: AddRule) => addTweetStreamRules(rules)(env),
-  deleteTweetStreamRules: (rules: DeleteRule) =>
-    deleteTweetStreamRules(rules)(env),
+  addTweetStreamRules: (rules: AddRule, dryRun: boolean) =>
+    addTweetStreamRules(rules, dryRun)(env),
+  deleteTweetStreamRules: (rules: DeleteRule, dryRun: boolean) =>
+    deleteTweetStreamRules(rules, dryRun)(env),
 });

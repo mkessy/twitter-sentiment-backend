@@ -1,11 +1,9 @@
-import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { AxiosResponse } from "axios";
 import {
   HttpDataExtractionError,
   HttpRequestError,
   HttpResponseStatusError,
-  NetworkError,
   NewError,
-  ParseError,
 } from "../Error/Error";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as D from "io-ts/Decoder";
@@ -98,18 +96,3 @@ export const axiosFetchAndDecode = <T>(
     RTE.chainTaskEitherK(getData),
     RTE.chainEitherKW(decoder.decode)
   );
-
-const axiosPost = async <T, D>(
-  url: string,
-  data: D,
-  config?: AxiosRequiredConfig
-) => {
-  console.info(`posting ${url}`);
-  return axios
-    .post<T>(url, data, {
-      ...config,
-    })
-    .then((res) => {
-      return res.data;
-    });
-};

@@ -3,25 +3,20 @@ import {
   nodeTweetStreamToObservable,
 } from "./processStream";
 import { twitterAPIService } from "./twitterStreamAPI";
-import { reconnectStream } from "../utils/reconnect";
-import * as O from "fp-ts-rxjs/Observable";
-import * as OE from "fp-ts-rxjs/ObservableEither";
-import * as IO from "fp-ts/IO";
+import { reconnectStream } from "./reconnect";
 import { axiosHttpClientEnv } from "../utils/axiosUtils";
 import { pipe } from "fp-ts/lib/function";
 import { NewError } from "../Error/Error";
-import { map, share, multicast, refCount } from "rxjs/operators";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as E from "fp-ts/lib/Either";
 import { Observable, Subject } from "rxjs";
-import { PartialObserver } from "rxjs";
 
 const getStreamConnection = (
   onNodeStreamFailureCallback: (err: unknown) => void
 ) => {
   return pipe(
     twitterAPIService(axiosHttpClientEnv).connectToTweetStream,
-    TE.orElse(reconnectStream), // three rounds of reconnec
+    TE.orElse(reconnectStream),
     TE.map((stream) =>
       nodeTweetStreamToObservable(stream, onNodeStreamFailureCallback)
     )
@@ -68,7 +63,9 @@ function createStreamService() {
         const streamConnection = await getStreamConnection(this.cleanUp)();
 
         if (E.isLeft(streamConnection)) {
-          console.info("failed to connect to stream");
+          console.info(
+            "failed to connect to stream after multiple retry attemps"
+          );
           return Promise.reject(`${streamConnection.left}`);
         } else {
           console.info("sucessfully connected to stream. processing...");

@@ -1,6 +1,4 @@
 import * as D from "io-ts/Decoder";
-import { option } from "io-ts-types/lib/option";
-import { unknown } from "io-ts";
 import { pipe } from "fp-ts/lib/function";
 
 const AddRuleObject = D.struct({

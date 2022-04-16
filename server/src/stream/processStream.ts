@@ -1,28 +1,15 @@
-import { observable, observableEither } from "fp-ts-rxjs";
-import { pipe } from "fp-ts/lib/function";
-import { fromEvent, Observable, scheduled, zip, of, from } from "rxjs";
-import {
-  groupBy,
-  bufferCount,
-  mergeAll,
-  map,
-  takeUntil,
-  mergeMap,
-  concatMap,
-} from "rxjs/operators";
+import { observable } from "fp-ts-rxjs";
+import { fromEvent, Observable, from } from "rxjs";
+import { groupBy, bufferCount, map, mergeMap, concatMap } from "rxjs/operators";
 import { TweetDecoder } from "../decoders";
 import * as R from "fp-ts/Refinement";
 import * as E from "fp-ts/Either";
 import { tryParseChunkToJson } from "./tweetStreamTransforms";
-import { Tweet } from "../types";
-import { axiosHttpClientEnv, axiosRequest } from "../utils/axiosUtils";
+import { axiosHttpClientEnv } from "../utils/axiosUtils";
 import { postTweetsToLambda } from "./twitterStreamAPI";
-import { asyncScheduler } from "rxjs";
-import { fromTaskEither } from "fp-ts-rxjs/lib/ObservableEither";
-import { HttpResponseStatusError, NewError } from "../Error/Error";
+import { NewError } from "../Error/Error";
 import { ReplaySubject } from "rxjs";
 import { flow } from "fp-ts/lib/function";
-import util from "util";
 import { finished } from "stream";
 
 // consumes the stream instance and returns an observable that will complete if the node stream closes for any reason
@@ -34,13 +21,6 @@ export const nodeTweetStreamToObservable = (
   if (!stream.isPaused) stream.pause();
 
   const data$ = fromEvent<unknown>(stream, "data");
-  /* const close$ = fromEvent(stream, "close");
-  const end$ = fromEvent(stream, "end");
-  const error$ = fromEvent<Error>(stream, "error");
-
-  const cancelEvents = scheduled([close$, end$, error$], asyncScheduler).pipe(
-    mergeAll()
-  ); */
 
   const cleanUp = finished(stream, (err: unknown) => {
     console.info(`encountered an error: ${err}`);

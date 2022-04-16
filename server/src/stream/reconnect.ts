@@ -1,4 +1,3 @@
-import * as IO from "fp-ts/IO";
 import * as E from "fp-ts/Either";
 import {
   capDelay,
@@ -10,8 +9,8 @@ import {
 } from "retry-ts";
 import { retrying } from "retry-ts/Task";
 import { NewError, HttpResponseStatusError } from "../Error/Error";
-import { twitterAPIService } from "../stream/twitterStreamAPI";
-import { axiosHttpClientEnv } from "./axiosUtils";
+import { twitterAPIService } from "./twitterStreamAPI";
+import { axiosHttpClientEnv } from "../utils/axiosUtils";
 
 export const linearBackOffNetworkError = Monoid.concat(
   capDelay(16000, constantDelay(500)),
