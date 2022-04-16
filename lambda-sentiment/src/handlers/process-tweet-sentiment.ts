@@ -3,13 +3,7 @@
 import { LanguageServiceClient } from "@google-cloud/language";
 import { LambdaPayloadDecoder } from "./decoder";
 import { putItem } from "./db";
-import {
-  LambdaError,
-  DynamoDbError,
-  GoogleLanguageServiceError,
-  InvalidOrMissingEventBodyError,
-  makeLambdaError,
-} from "./error";
+import { LambdaError, makeLambdaError, mapErrorToResponseCode } from "./error";
 
 import {
   Handler,
@@ -17,12 +11,9 @@ import {
   APIGatewayProxyResultV2,
 } from "aws-lambda";
 
-import { SentimentDataPoint } from "../types";
-
 import {
   analyzeSentimentTask,
   lambdaPayloadToSentimentDocument,
-  parseJson,
 } from "./utils";
 
 import { pipe } from "fp-ts/lib/function";
@@ -73,7 +64,8 @@ export const processTweetSentiment: ProxyHandler = async (event, context) => {
     response,
     E.fold(
       // TODO add functions for generating error responses by matching error type
-      (err) => ({ statusCode: 500, body: JSON.stringify(err) }),
+      mapErrorToResponseCode,
+
       (result) => ({ statusCode: 200, body: JSON.stringify(result) })
     )
   );

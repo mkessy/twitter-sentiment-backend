@@ -1,5 +1,7 @@
 // error types for the lambda function
 
+import { DecodeError } from "io-ts/lib/Decoder";
+
 export type InvalidOrMissingEventBodyError = {
   _tag: "InvalidOrMissingEventBodyError";
   message: string;
@@ -40,5 +42,23 @@ export const makeLambdaError = (
         _tag: "InvalidOrMissingEventBodyError",
         message: m,
       } as InvalidOrMissingEventBodyError;
+  }
+};
+type ErrorResponse = { statusCode: number; body: string };
+export const mapErrorToResponseCode = (
+  error: LambdaError | DecodeError
+): ErrorResponse => {
+  switch (error._tag) {
+    case "DynamoDbError":
+      return { statusCode: 500, body: JSON.stringify(error) };
+    case "GoogleLanguageServiceError":
+      return { statusCode: 500, body: JSON.stringify(error) };
+    case "InvalidOrMissingEventBodyError":
+      return { statusCode: 403, body: JSON.stringify(error) };
+    case "Concat":
+    case "Of":
+      return { statusCode: 403, body: JSON.stringify(error) };
+    default:
+      return { statusCode: 500, body: JSON.stringify(error) };
   }
 };
