@@ -1,96 +1,92 @@
 import { twitterAPIService } from "./twitterStreamAPI";
 import { reconnectStream } from "./reconnect";
 import { axiosHttpClientEnv } from "../utils/axiosUtils";
-import { assign, createMachine, DoneInvokeEvent, interpret } from "xstate";
+import { assign, createMachine } from "xstate";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as E from "fp-ts/lib/Either";
-import { TypeOf } from "io-ts";
+import { NewError } from "../Error/Error";
+import { processTweetStream, tearDownStream } from "./processStream";
 
-const getStreamConnection = () =>
+export const getStreamConnection = () =>
   pipe(
     twitterAPIService(axiosHttpClientEnv).connectToTweetStream,
     TE.orElse(reconnectStream)
   )();
 
-type StreamMachineContext = {
-  stream: Awaited<ReturnType<typeof getStreamConnection>> | null;
-};
+type StreamMachineContext = {};
 
-type StreamMachineEvents = { type: "START_STREAM" };
-
-const streamMachine =
-  /** @xstate-layout N4IgpgJg5mDOIC5QBcDuBLZywCcC0syOYAhgLYB06EANmAMQDKAKgIIBKzA+i+wKKsAsolAAHAPaxM6cQDsRIAB6I8AFgAcAVgoA2AOwBOTaoMBGPQAZzAZh3WANCACeK66YBMFUxZ3uLf-R0tPQBfEMc0TGx8QmJyCgBjOVkwBOR0WSh6CDkwKlkAN3EAazzIrFwCIlJKJNkUtIyoBAyihJJ0uQBtCwBdBQkpTvkkJUQDCwp3VVV3HRM9LW8DHUcXBDxrVWtdHz9TGfV1azMwiIwKmOr44lhxGgKmgGFk1OH6AclpOQVlDZ19BQTnYtjoDqYdGY1ip3HoKJo9CcDhZVJDEZowuEQLJxBA4ApytEqnFKNQ6J8hjIRqA-ng7NoNFt1PoDHpTKYjtCNm51LtfP5ppp2VsziBCZVYjVEq9GpkKd9qWMNrDtAcgvN1O5rD5TAYuZtNDovHsfEELOpzaLxVcSRRbvdHpkXvU3lT5cNfogZtotppNAZVHpZhaPHp9VsdkKERZFubtVqrRciZL4imyAAxEjoGgAV2I7rdo1p7j8FD0bOZM1N82smi5zIoFkNaus1ncxzBOkTUQl10oaaaFBSqAABIQOmAR6YCz8iypzKr1Oj2aiVjpNA5nCpDbpERMY7qzOzTN3LsSpQO5aNBgrPRtD14l7WV5CARv9R4DLvrOoj7q9H6RinsmfYzoqtKQqYQIrK2qLgpB+qzF+3j8sYByqKYWyhJiQA */
+type StreamMachineEvents =
+  | { type: "STREAM_START" }
+  | { type: "STREAM_CONNECT_SUCCESS" }
+  | { type: "STREAM_CONNECT_FAILURE" }
+  | { type: "STREAM_FINISHED" }
+  | { type: "STREAM_TEARDOWN_COMPLETE" };
+export const streamMachine =
+  /** @xstate-layout N4IgpgJg5mDOIC5QBcDuBLZywCcC0syOYAhgLYB06EANmAMQDKAKgEoCiAggLID6LnVs0SgADgHtYmdOIB2IkAA9EeAGwAWAOwUATOtUAGAJxHN6owEYAzJosAaEAE8VADlUBWXe52aX6-f42OgC+wQ5omNj4hMTkFADGcrJg8cjoslBMbFx8AMIA8gByhey5zLwAYpwAkgAyAKocChJSaXIKygh4FqpGFAbuBqpW6lZW3sM6Vg7OXW5WFKouBjpGVkbqPrah4RhYuAREpJSJssmp6ZksHDy8BcWl5Yz1ubnsjIzNktLtSEoq7gsLgo7isOmGBi0Rj8fhmKk06woLjGmhWmg2Rl6ITCIAi+2iRziMWOlwoohw4nicCkGWYqDAYGQjEJZCyNz4FWqhWqjAAEuwACJfVoyeR-Tp4EYGCg9CHQyHmHxwrruQEUcYIrSbVbuVTY3aRA7Eoks0nYEg4S4C8SoWTM2Ks645XjMLisAX5ADqhTu+W4AAVauxXcKfmLQBL1AZtJoli5fJo9FYXEZ3OplXhVtKhgjoyNUdHVJodri9lFDg6KMayJd6BA5GAq8gSNgKHjy9Wmw7LqG2uH-l10X0LFoXBYfN4xxsMxoKImEToDNGXCudMjQjjZOIIHAFO2jSyqLQwL3RR1XJC58nVL1VBZxyYdBn49KgQYrAYx-p1ksS-uCZWpznGkGSnr8EYqFG2iplGPRwYCoLPqiMrLB+X7DJiLh-mWB6VtWuRJCkfYVCQ6A0AArsQYH9hKFiYhQJgeFYI5TNGOhKk48L6OqKI9CYLjuKm2GGgBxxdiSGRkhSVKwDSUB0gyTIstR55dB42i6nogLLL4YwZqq2gCQid56h4U7CfiFZidWZqkJaGTWra9rHCp4oAqm6qrOoaYuOxmIWJoGbrAsFiDDYQIjCmK6qBZHaHjZkmJGQoh0NgrkQWpqo8QYPSaAmYK2BmI7qP07GaaM97WD4sW4dZpqgX8LRhqpahjiCereW+unTJxakfki7gInl6jIv5NWieQ6UDngvnAgibi3veqxGE+vV4BsIWoTlsbQuYMUbkAA */
   createMachine(
     {
-      context: { stream: null },
+      context: {},
       tsTypes: {} as import("./streamService.typegen").Typegen0,
       schema: {
         context: {} as StreamMachineContext,
         events: {} as StreamMachineEvents,
-        services: {} as {
-          getStreamConnection: {
-            data: Awaited<ReturnType<typeof getStreamConnection>>;
-          };
-        },
+        services: {} as {},
       },
+      preserveActionOrder: true,
       id: "twitter-stream",
       initial: "idle",
       states: {
         idle: {
           on: {
-            START_STREAM: {
+            STREAM_START: {
               target: "connecting",
             },
           },
         },
         connecting: {
-          invoke: {
-            src: "getStreamConnection",
-            onDone: [
-              {
-                actions: "assignStreamToContext",
-                target: "resolvingConnection",
-              },
-            ],
-          },
-        },
-        resolvingConnection: {
-          always: [
-            {
-              cond: "streamIsConnected",
+          on: {
+            STREAM_CONNECT_FAILURE: {
+              target: "streamConnectionFailure",
+            },
+            STREAM_CONNECT_SUCCESS: {
               target: "streaming",
             },
-            {
-              cond: "streamIsNotConnected",
-              target: "streamFailure",
-            },
-          ],
+          },
         },
-        streamFailure: {},
+        streamConnectionFailure: {},
         streaming: {
-          initial: "new state 1",
+          initial: "processingTweetStream",
           states: {
-            "new state 1": {},
+            processingTweetStream: {
+              on: {
+                STREAM_FINISHED: {
+                  target: "tearingDownStream",
+                },
+              },
+            },
+            tearingDownStream: {
+              on: {
+                STREAM_TEARDOWN_COMPLETE: {
+                  target: "complete",
+                },
+              },
+            },
+            complete: {
+              type: "final",
+            },
+          },
+          onDone: {
+            target: "idle",
           },
         },
       },
     },
     {
-      services: {
-        getStreamConnection,
-      },
-      actions: {
-        assignStreamToContext: (context, event) =>
-          assign({ stream: event.data }),
-      },
+      services: {},
+      actions: {},
 
-      guards: {
-        streamIsConnected: (context, _) =>
-          context.stream ? E.isRight(context.stream) : false,
-        streamIsNotConnected: (context, _) =>
-          context.stream ? E.isLeft(context.stream) : false,
-      },
+      guards: {},
     }
   );
 

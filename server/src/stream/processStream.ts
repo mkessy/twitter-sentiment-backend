@@ -1,20 +1,42 @@
-import { observable } from "fp-ts-rxjs";
 import { fromEvent, Observable, from } from "rxjs";
-import { groupBy, bufferCount, map, mergeMap, concatMap } from "rxjs/operators";
 import { TweetDecoder } from "../decoders";
 import * as R from "fp-ts/Refinement";
 import * as E from "fp-ts/Either";
-import { tryParseChunkToJson } from "./tweetStreamTransforms";
+import { tryParseChunkToJson, tweetRefinement } from "./tweetStreamTransforms";
 import { axiosHttpClientEnv } from "../utils/axiosUtils";
 import { postTweetsToLambda } from "./twitterStreamAPI";
 import { NewError } from "../Error/Error";
 import { ReplaySubject } from "rxjs";
-import { flow } from "fp-ts/lib/function";
-import { finished } from "stream";
+import { pipe } from "fp-ts/lib/function";
+import { finished } from "stream/promises";
+import { streamMachine } from "./streamService";
 
 // consumes the stream instance and returns an observable that will complete if the node stream closes for any reason
 
-export const nodeTweetStreamToObservable = (
+export const processTweetStream = (stream: NodeJS.ReadStream) => {
+  if (!stream.isPaused) {
+    stream.pause();
+  }
+  stream.on("data", (data) => {
+    pipe(
+      tryParseChunkToJson(data),
+      TweetDecoder.decode,
+      E.foldW(
+        (e) => console.log(e),
+        (tweet) => console.log(tweet)
+      )
+    );
+  });
+  stream.resume();
+
+  return finished(stream);
+};
+
+export const tearDownStream = async (stream: NodeJS.ReadStream) => {
+  stream.destroy();
+};
+
+/* export const nodeTweetStreamToObservable = (
   stream: NodeJS.ReadStream,
   callback: (err: unknown) => void
 ) => {
@@ -33,34 +55,4 @@ export const nodeTweetStreamToObservable = (
   stream.resume();
   return [data$, cleanUp] as const;
 };
-
-const tweetRefinement = R.fromEitherK((chunk: unknown) =>
-  TweetDecoder.decode(chunk)
-);
-
-export const groupAndPostToLambda: (
-  fa: Observable<unknown>
-) => Observable<E.Either<NewError, unknown>> = flow(
-  observable.map(tryParseChunkToJson),
-  // should catch heartbeat and cancel stream if it isn't detected for a determined amount of time
-  observable.filter(tweetRefinement),
-  groupBy(
-    (tweet) => tweet.matching_rules[0].id,
-    (tweet) => tweet,
-    () => new ReplaySubject()
-  ),
-  concatMap((group$) =>
-    group$.pipe(
-      bufferCount(2), //TODO remove magic number for group buffers
-      map((tweets) => [group$.key, tweets] as const)
-    )
-  ),
-  mergeMap(([ruleId, tweets]) =>
-    from(postTweetsToLambda({ ruleId, tweets })(axiosHttpClientEnv)())
-  ),
-  map((v) => {
-    console.info("attempted to post tweet group to lambda");
-    console.info(`attempt: ${E.isLeft(v) ? "failed" : "succeeded"}`);
-    return v;
-  })
-);
+ */
