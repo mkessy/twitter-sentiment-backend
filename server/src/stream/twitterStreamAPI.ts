@@ -19,14 +19,16 @@ import {
   DeleteRulesResponseDecoder,
   LambdaResponseDecoder,
 } from "../decoders";
-import * as dotenv from "dotenv";
+
+import "dotenv/config";
 
 import { NewError } from "../Error/Error";
 import { pipe } from "fp-ts/lib/function";
 import { axiosRequest, getData, validateStatus } from "../utils/axiosUtils";
-import * as path from "path";
 import { DecodeError } from "io-ts/lib/Decoder";
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
+console.log("from api service");
+console.log(process.env.BEARER_TOKEN);
 
 interface APIConfig {
   endpoint: string;

@@ -5,6 +5,7 @@ import {
   GetRulesResponseDecoder,
   AddRulesResponseDecoder,
   DeleteRulesResponseDecoder,
+  StreamCommandDecoder,
   TweetDecoder,
 } from "./decoders";
 import * as D from "io-ts/Decoder";
@@ -38,6 +39,7 @@ export type DeleteRule = D.TypeOf<typeof DeleteRulesDecoder>;
 export type GetRulesResponse = D.TypeOf<typeof GetRulesResponseDecoder>;
 export type AddRulesResponse = D.TypeOf<typeof AddRulesResponseDecoder>;
 export type DeleteRulesResponse = D.TypeOf<typeof DeleteRulesResponseDecoder>;
+export type StreamCommand = D.TypeOf<typeof StreamCommandDecoder>;
 
 export type Tweet = D.TypeOf<typeof TweetDecoder>;
 
