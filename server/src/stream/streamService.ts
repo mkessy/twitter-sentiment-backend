@@ -7,6 +7,9 @@ import * as TE from "fp-ts/lib/TaskEither";
 import * as E from "fp-ts/lib/Either";
 import { NewError } from "../Error/Error";
 import { processTweetStream, tearDownStream } from "./processStream";
+import { finished } from "stream";
+import { TweetDecoder } from "../decoders";
+import { tryParseChunkToJson } from "./tweetStreamTransforms";
 
 export const getStreamConnection = () =>
   pipe(
@@ -15,7 +18,6 @@ export const getStreamConnection = () =>
   )();
 
 type StreamMachineContext = {};
-
 type StreamMachineEvents =
   | { type: "STREAM_START" }
   | { type: "STREAM_CONNECT_SUCCESS" }
@@ -23,10 +25,10 @@ type StreamMachineEvents =
   | { type: "STREAM_FINISHED" }
   | { type: "STREAM_TEARDOWN_COMPLETE" };
 export const streamMachine =
-  /** @xstate-layout N4IgpgJg5mDOIC5QBcDuBLZywCcC0syOYAhgLYB06EANmAMQDKAKgEoCiAggLID6LnVs0SgADgHtYmdOIB2IkAA9EeAGwAWAOwUATOtUAGAJxHN6owEYAzJosAaEAE8VADlUBWXe52aX6-f42OgC+wQ5omNj4hMTkFADGcrJg8cjoslBMbFx8AMIA8gByhey5zLwAYpwAkgAyAKocChJSaXIKygh4FqpGFAbuBqpW6lZW3sM6Vg7OXW5WFKouBjpGVkbqPrah4RhYuAREpJSJssmp6ZksHDy8BcWl5Yz1ubnsjIzNktLtSEoq7gsLgo7isOmGBi0Rj8fhmKk06woLjGmhWmg2Rl6ITCIAi+2iRziMWOlwoohw4nicCkGWYqDAYGQjEJZCyNz4FWqhWqjAAEuwACJfVoyeR-Tp4EYGCg9CHQyHmHxwrruQEUcYIrSbVbuVTY3aRA7Eoks0nYEg4S4C8SoWTM2Ks645XjMLisAX5ADqhTu+W4AAVauxXcKfmLQBL1AZtJoli5fJo9FYXEZ3OplXhVtKhgjoyNUdHVJodri9lFDg6KMayJd6BA5GAq8gSNgKHjy9Wmw7LqG2uH-l10X0LFoXBYfN4xxsMxoKImEToDNGXCudMjQjjZOIIHAFO2jSyqLQwL3RR1XJC58nVL1VBZxyYdBn49KgQYrAYx-p1ksS-uCZWpznGkGSnr8EYqFG2iplGPRwYCoLPqiMrLB+X7DJiLh-mWB6VtWuRJCkfYVCQ6A0AArsQYH9hKFiYhQJgeFYI5TNGOhKk48L6OqKI9CYLjuKm2GGgBxxdiSGRkhSVKwDSUB0gyTIstR55dB42i6nogLLL4YwZqq2gCQid56h4U7CfiFZidWZqkJaGTWra9rHCp4oAqm6qrOoaYuOxmIWJoGbrAsFiDDYQIjCmK6qBZHaHjZkmJGQoh0NgrkQWpqo8QYPSaAmYK2BmI7qP07GaaM97WD4sW4dZpqgX8LRhqpahjiCereW+unTJxakfki7gInl6jIv5NWieQ6UDngvnAgibi3veqxGE+vV4BsIWoTlsbQuYMUbkAA */
+  /** @xstate-layout N4IgpgJg5mDOIC5QBcDuBLZywCcC0syOYAhgLYB06EANmAMQDKAKgEoCiAggLID6LnVs0SgADgHtYmdOIB2IkAA9EeAOwAmAJwVVAFlWqArADYTxgIwAOc+YA0IAJ4rLAZlUVjABk+aLqi+aG6uoAviH2aJjY+ITE5BQAxnKyYAnI6LJQTGxcfADCAPIAckXsecy8AGKcAJIAMgCqHAoSUulyCsoIeOqG5hSGQVo2QS6eGvZO3a7GFJ7qlvrm6i6aupbGYREYWLgERKSUSbIpaRlZLBw8vIUlZRWMDXl57IyMLZLSHUhKKl79nhcugWGl8lk06l0kxUqmWFCsVks3k05mMi1C4RAkV2MQO8Vih3OFFEOHECTgUkyzFQYDAyEYeLI2SufEqNSKNUYAAl2AARD5tGTyH5dPDA9QeYyqXzGYzqQIuWXGaHdUY6TyDSGw3ywjHbKJ7An4xlE7AkHDnXniVCyBlxJmXXK8ZhcVi8goAdSKNwK3AACnV2C6BV9haBRbpNJ4KOpVBqXINdOZdC4gYYVT05RQk4Z1rpjCmNOpZVssTtovt7RQjWRzvQIHIwNXkCRsBRsRWa837ecQ+0w79ptYPJH85oTJoNkCM245kZI6o3INNKpLBjMbJxBA4AoO4bGVRaGA+0LOs5LO5IYDi8DXCn1Bn0QMFutcymbFZS3vcVXjqd0pkJ7fOGKiRtGuiDFKWirsuLiPsCz6LJYb4uB+lhfuW+5VjWeTJKk-aVCQ6A0AArsQQEDqKsbaJG1iWGuuieDYcpQo4MJWB4dFrFohioRhBo-oc3aEpkxKkuSsCUlA1K0vSjIUWe3R6NGngFuYngbJCF6qBmvHRuoGq8eCKxaMYmj8TilZCTWpqkBamRWjadqHApIp-MOEEFpOJhJosOlsd0qEuBQk5rsYbiIuYEIWZ2B42aJSRkKIdDYK5IFKbOrhWJCXiFjYGbMRQbjjKsGirgssYxVh1kmoBPytKGilqAWcxqRpLHaRmXjBQZgxRQZ4VrOYVWCeQaWDngKL9FeLg3gsQKzRmKKGIhtFJpCqK6GEYRAA */
   createMachine(
     {
-      context: {},
+      context: { stream: null },
       tsTypes: {} as import("./streamService.typegen").Typegen0,
       schema: {
         context: {} as StreamMachineContext,

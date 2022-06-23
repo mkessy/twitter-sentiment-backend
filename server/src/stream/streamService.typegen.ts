@@ -2,42 +2,30 @@
 
 export interface Typegen0 {
   "@@xstate/typegen": true;
-  eventsCausingActions: {
-    assignStreamToContext: "done.invoke.twitter-stream.connecting:invocation[0]";
-  };
+  eventsCausingActions: {};
   internalEvents: {
-    "done.invoke.twitter-stream.connecting:invocation[0]": {
-      type: "done.invoke.twitter-stream.connecting:invocation[0]";
-      data: unknown;
-      __tip: "See the XState TS docs to learn how to strongly type this.";
-    };
-    "": { type: "" };
     "xstate.init": { type: "xstate.init" };
   };
-  invokeSrcNameMap: {
-    getStreamConnection: "done.invoke.twitter-stream.connecting:invocation[0]";
-  };
+  invokeSrcNameMap: {};
   missingImplementations: {
     actions: never;
     services: never;
     guards: never;
     delays: never;
   };
-  eventsCausingServices: {
-    getStreamConnection: "START_STREAM";
-  };
-  eventsCausingGuards: {
-    streamIsConnected: "";
-    streamIsNotConnected: "";
-  };
+  eventsCausingServices: {};
+  eventsCausingGuards: {};
   eventsCausingDelays: {};
   matchesStates:
     | "idle"
     | "connecting"
-    | "resolvingConnection"
-    | "streamFailure"
+    | "streamConnectionFailure"
     | "streaming"
-    | "streaming.new state 1"
-    | { streaming?: "new state 1" };
+    | "streaming.processingTweetStream"
+    | "streaming.tearingDownStream"
+    | "streaming.complete"
+    | {
+        streaming?: "processingTweetStream" | "tearingDownStream" | "complete";
+      };
   tags: never;
 }

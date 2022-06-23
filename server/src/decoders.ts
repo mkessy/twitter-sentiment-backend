@@ -6,6 +6,10 @@ const AddRuleObject = D.struct({
   tag: D.string,
 });
 
+export const StreamCommandDecoder = D.struct({
+  command: D.literal("start", "stop", "restart"),
+});
+
 export const DeleteRulesDecoder = D.struct({
   delete: D.struct({
     ids: D.array(D.string),

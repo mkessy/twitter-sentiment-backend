@@ -1,37 +1,51 @@
-import { axiosHttpClientEnv } from "./utils/axiosUtils";
-import { pipe } from "fp-ts/lib/function";
+import { streamMachine, getStreamConnection } from "./stream/streamService";
+import { interpret } from "xstate";
 import * as E from "fp-ts/Either";
-import * as IO from "fp-ts/IO";
-import StreamService from "./stream/StreamService";
-
 import "dotenv/config";
+import { pipe } from "fp-ts/lib/function";
+import { tryParseChunkToJson } from "./stream/tweetStreamTransforms";
+import { TweetDecoder } from "./decoders";
+import { finished } from "stream";
 
-import { twitterAPIService } from "./stream/twitterStreamAPI";
+export const streamService = interpret(streamMachine).start();
+export const runStreamService = async () => {
+  streamService.send("STREAM_START");
+  const stream = await getStreamConnection();
+  if (E.isRight(stream)) {
+    streamService.send("STREAM_CONNECT_SUCCESS");
+    const rawStream = stream.right;
 
-const streamAPI = twitterAPIService(axiosHttpClientEnv);
-
-// create new 'retrying' instances for each reconnect logic
-// call them sequentially based on fail conditions
-
-// TODO put this inside of a main IO function
-
-const main: IO.IO<void> = async () => {
-  const connectTolistener = async () => {
-    const listener = await StreamService.getListener();
-
-    listener.subscribe({
-      next: (v) => {
-        console.log(v);
-      },
-      complete: () => {
-        console.log("stream complete signal registered");
-        console.log("reconnecting listener...");
-        connectTolistener();
-      },
+    rawStream.pause();
+    // stream processing here
+    rawStream.on("data", (data) => {
+      pipe(
+        tryParseChunkToJson(data),
+        TweetDecoder.decode,
+        E.foldW(
+          (e) => console.log(e),
+          (tweet) => console.log(tweet)
+        )
+      );
     });
-  };
 
-  connectTolistener();
+    const cleanup = finished(rawStream, (err) => {
+      streamService.send("STREAM_FINISHED");
+      cleanup();
+      streamService.send("STREAM_TEARDOWN_COMPLETE");
+    });
+
+    rawStream.resume();
+  } else {
+    streamService.send("STREAM_CONNECT_FAILURE");
+  }
+
+  return stream;
 };
 
-main();
+/* console.log("Starting with initial state: ");
+console.log(streamService.state.value);
+streamService.onTransition((state, event) => {
+  console.log(`Transition: ${state.value} ---- ${event.type}`);
+  console.log(state.context);
+});
+ */
